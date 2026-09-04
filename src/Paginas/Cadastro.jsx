@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { db } from './firebase'
+import { db } from "../firebase.js";
 import { ref, push, set, query, orderByChild, equalTo, get } from 'firebase/database'
 
 export default function Cadastro(props) {
