@@ -1,61 +1,119 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
+import { db } from '../firebase'
+import { ref, onValue, update } from 'firebase/database'
 
-function Notificacoes() {
-  const [pedidos, setPedidos] = useState([])
-  const [usuario, setUsuario] = useState(null)
-  const [ultimoIdRecebido, setUltimoIdRecebido] = useState(0)
-  const audioRef = useRef(null)
+export default function Notificacoes() {
+  const [chamadas, setChamadas] = useState([])
+  const [dadosCuidador, setDadosCuidador] = useState(null)
 
-  // Som de notificação compacto em base64 (TODA A STRING EM UMA LINHA SÓ)
-  const somNotificacao = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhFAACICAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwyETQMDjP+NsxYgA=="
+  // ✅ Carrega dados do Cuidador logado
+  useEffect(() => {
+    const salvo = localStorage.getItem('usuarioLogado')
+    if (salvo) {
+      setDadosCuidador(JSON.parse(salvo))
+    }
+  }, [])
 
-  // Função para tocar o som
-  const tocarSom = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0
-      audioRef.current.play().catch(err => console.log("Erro ao tocar som:", err))
+  // ✅ FICA ESPERANDO CHAMADAS EM TEMPO REAL ⚡
+  useEffect(() => {
+    const chamadasRef = ref(db, 'chamadas')
+
+    // ✅ SEMPRE que uma chamada for criada → APARECE NA HORA!
+    const pararEscutar = onValue(chamadasRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const lista = []
+        snapshot.forEach((filho) => {
+          const chamada = { id: filho.key, ...filho.val() }
+          // ✅ Mostra SOMENTE chamadas ABERTAS (esperando cuidador)
+          if (chamada.status === 'aberto') {
+            lista.push(chamada)
+          }
+        })
+        // ✅ Mostra as mais recentes primeiro
+        setChamadas(lista.reverse())
+      } else {
+        setChamadas([])
+      }
+    })
+
+    // ✅ Para de escutar quando sair da página
+    return () => pararEscutar()
+  }, [])
+
+  // ✅ Cuidador ACEITA a chamada
+  async function aceitarChamada(chamada) {
+    if (!dadosCuidador) {
+      alert('⚠️ Faça login como Cuidador!')
+      return
+    }
+
+    try {
+      const chamadaRef = ref(db, `chamadas/${chamada.id}`)
+      await update(chamadaRef, {
+        status: 'aceito',
+        cuidadorAceitou: dadosCuidador.nome,
+        emailCuidador: dadosCuidador.email
+      })
+
+      alert(`✅ Você ACEITOU a chamada de ${chamada.nomeDono}!\n\nO dono já foi avisado! 🎉`)
+    } catch (erro) {
+      console.error(erro)
+      alert('❌ Erro ao aceitar: ' + erro.message)
     }
   }
 
-  // Simulação de verificação de novos pedidos
-  useEffect(() => {
-    const verificarNovosPedidos = () => {
-      // Aqui você vai buscar os pedidos do seu backend
-      const pedidosRecentes = [] // ← substitua pela sua busca real
-
-      if (pedidosRecentes.length > 0) {
-        const idMaisRecente = pedidosRecentes[0]?.id
-        if (idMaisRecente && idMaisRecente !== ultimoIdRecebido) {
-          setUltimoIdRecebido(idMaisRecente)
-          setPedidos(pedidosRecentes)
-          tocarSom() // 🔔 TOCA O SOM QUANDO CHEGA NOVO PEDIDO
-        }
-      }
-    }
-
-    verificarNovosPedidos() // Verificação inicial
-    const intervalo = setInterval(verificarNovosPedidos, 5000) // A cada 5 segundos
-
-    return () => clearInterval(intervalo)
-  }, [ultimoIdRecebido])
+  // ✅ Formata a hora
+  function formatarHora(timestamp) {
+    if (!timestamp) return 'Agora'
+    const data = new Date(timestamp)
+    return data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  }
 
   return (
-    <div style={{ padding: '20px' }}>
-      {/* Elemento de áudio invisível */}
-      <audio ref={audioRef} src={somNotificacao} preload="auto" />
+    <div style={{padding: '20px', maxWidth: '450px', margin: '0 auto'}}>
+      <h2 style={{textAlign: 'center', color: '#1f2937', marginBottom: '25px'}}>🔔 Chamadas Abertas</h2>
 
-      
-      
-
-      {pedidos.length === 0 ? (
-        <p>Nenhum pedido novo no momento.</p>
+      {chamadas.length === 0 ? (
+        <div style={{textAlign: 'center', padding: '40px', color: '#6b7280'}}>
+          <p style={{fontSize: '40px'}}>🐾</p>
+          <p style={{fontSize: '16px', marginTop: '10px'}}>Nenhuma chamada no momento...</p>
+          <p style={{fontSize: '14px'}}>Aguarde um Dono fazer uma busca!</p>
+        </div>
       ) : (
-        <div>
-          <h3>Novos Pedidos:</h3>
-          {pedidos.map(pedido => (
-            <div key={pedido.id} style={{ border: '1px solid #ccc', padding: '10px', margin: '10px 0' }}>
-              <p>Pedido #{pedido.id}</p>
-              <p>Dono: {pedido.nomeDono}</p>
+        <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
+          {chamadas.map((chamada) => (
+            <div key={chamada.id} style={{
+              padding: '18px',
+              backgroundColor: '#fff',
+              borderRadius: '12px',
+              border: '2px solid #fbbf24',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+            }}>
+              <h3 style={{margin: '0 0 8px 0', color: '#92400e'}}>👤 {chamada.nomeDono}</h3>
+              <p style={{margin: '4px 0', fontSize: '14px', color: '#4b5563'}}>
+                🕐 {formatarHora(chamada.hora)}
+              </p>
+              <p style={{margin: '4px 0', fontSize: '13px', color: '#6b7280'}}>
+                📍 Localização enviada
+              </p>
+
+              <button
+                onClick={() => aceitarChamada(chamada)}
+                style={{
+                  marginTop: '12px',
+                  width: '100%',
+                  padding: '12px',
+                  backgroundColor: '#22c55e',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer'
+                }}
+              >
+                ✅ ACEITAR Chamada
+              </button>
             </div>
           ))}
         </div>
@@ -63,5 +121,3 @@ function Notificacoes() {
     </div>
   )
 }
-
-export default Notificacoes

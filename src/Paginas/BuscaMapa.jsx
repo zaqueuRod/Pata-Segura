@@ -1,272 +1,116 @@
 import { useState, useEffect } from 'react'
+import { db } from '../firebase'
+import { ref, push, set, serverTimestamp } from 'firebase/database'
 
 export default function BuscaMapa() {
+  const [dadosUsuario, setDadosUsuario] = useState(null)
   const [buscando, setBuscando] = useState(false)
-  const [solicitacoesPendentes, setSolicitacoesPendentes] = useState([])
-  const [cuidadoresAceitos, setCuidadoresAceitos] = useState([])
-  const [minhaPosicao, setMinhaPosicao] = useState({ lat: -26.916, lng: -48.645 }) // Padrão: Itajaí
+  const [chamadaEnviada, setChamadaEnviada] = useState(false)
 
-  // 📍 Cuidadores próximos
-  const dadosCuidadores = [
-    { id: 1, nome: 'Mariana Silva', dLat: 0.002, dLng: -0.003, distancia: '500m', nota: '4,9 ⭐', preco: 'R$ 25,00' },
-    { id: 2, nome: 'João Santos', dLat: -0.003, dLng: +0.004, distancia: '800m', nota: '4,7 ⭐', preco: 'R$ 30,00' },
-    { id: 3, nome: 'Ana Carolina', dLat: +0.004, dLng: +0.002, distancia: '1,2km', nota: '5,0 ⭐', preco: 'R$ 28,00' },
-    { id: 4, nome: 'Pedro Oliveira', dLat: -0.004, dLng: -0.005, distancia: '1,5km', nota: '4,8 ⭐', preco: 'R$ 35,00' },
-  ]
-
-  // ✅ Busca localização REAL do dono
+  // ✅ Carrega os dados do DONO logado
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (posicao) => {
-          setMinhaPosicao({
-            lat: posicao.coords.latitude,
-            lng: posicao.coords.longitude
-          })
-        },
-        (erro) => {
-          console.log('⚠️ Usando Itajaí como padrão')
-        },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-      )
+    const salvo = localStorage.getItem('usuarioLogado')
+    if (salvo) {
+      setDadosUsuario(JSON.parse(salvo))
     }
   }, [])
 
-  // ✅ Dono inicia a BUSCA → notifica cuidadores em tempo real
-  function procurar() {
-    setSolicitacoesPendentes([])
-    setCuidadoresAceitos([])
-    setBuscando(true)
-
-    let indice = 0
-    const timer = setInterval(() => {
-      if (indice >= dadosCuidadores.length) {
-        clearInterval(timer)
-        setBuscando(false)
-        return
-      }
-
-      const cuidador = dadosCuidadores[indice]
-      const posicaoReal = {
-        ...cuidador,
-        lat: minhaPosicao.lat + cuidador.dLat,
-        lng: minhaPosicao.lng + cuidador.dLng,
-        status: 'pendente' // ⏳ Aguardando aceite
-      }
-
-      // 📤 ENVIA NOTIFICAÇÃO PARA O CUIDADOR
-      setSolicitacoesPendentes(anterior => [...anterior, posicaoReal])
-      console.log(`🔔 ${cuidador.nome} recebeu um NOVO PEDIDO! Aguardando aceite...`)
-
-      // ⏱️ SIMULA o cuidador ACEITANDO em 3 a 6 segundos
-      setTimeout(() => {
-        aceitarChamado(cuidador.id)
-      }, 3000 + Math.random() * 3000)
-
-      indice = indice + 1
-    }, 1500)
-  }
-
-  // ✅ CUIDADOR ACEITA → só AÍ os dados aparecem para o DONO
-  function aceitarChamado(idCuidador) {
-    const cuidador = solicitacoesPendentes.find(c => c.id === idCuidador) 
-                   || dadosCuidadores.find(c => c.id === idCuidador)
-    
-    if (!cuidador) return
-
-    const cuidadorCompleto = {
-      ...cuidador,
-      lat: minhaPosicao.lat + cuidador.dLat,
-      lng: minhaPosicao.lng + cuidador.dLng,
-      status: 'aceito'
+  // ✅ Função: Dono faz a BUSCA = ENVIA CHAMADA para TODOS os Cuidadores
+  async function fazerBusca() {
+    if (!dadosUsuario) {
+      alert('⚠️ Faça login primeiro!')
+      return
     }
 
-    // ✅ Move de "Pendente" → "Aceito" (aparece para o dono)
-    setCuidadoresAceitos(anterior => [...anterior, cuidadorCompleto])
-    setSolicitacoesPendentes(anterior => anterior.filter(c => c.id !== idCuidador))
+    setBuscando(true)
 
-    console.log(`✅ ${cuidador.nome} ACEITOU o pedido! Agora aparece para o Dono.`)
-  }
+    try {
+      // ✅ Pega a localização atual do Dono
+      navigator.geolocation.getCurrentPosition(
+        async (posicao) => {
+          const lat = posicao.coords.latitude
+          const lng = posicao.coords.longitude
 
-  // 📏 500 metros de cada lado → Área TOTAL = 1km × 1km
-  const METROS_500 = 0.5 / 111
+          // ✅ SALVA A CHAMADA NO FIREBASE → Cuidadores recebem NA HORA!
+          const chamadasRef = ref(db, 'chamadas')
+          const novaChamada = push(chamadasRef)
 
-  // Limites do mapa = 500m em todas as direções
-  const lngOeste = minhaPosicao.lng - METROS_500
-  const lngLeste = minhaPosicao.lng + METROS_500
-  const latNorte = minhaPosicao.lat + METROS_500
-  const latSul = minhaPosicao.lat - METROS_500
+          await set(novaChamada, {
+            idChamada: novaChamada.key,
+            nomeDono: dadosUsuario.nome,
+            emailDono: dadosUsuario.email,
+            lat: lat,
+            lng: lng,
+            status: 'aberto', // ← 'aberto' = esperando cuidador
+            cuidadorAceitou: null,
+            hora: serverTimestamp()
+          })
 
-  // Converte coordenada para porcentagem dentro do mapa
-  function coordParaPorcentagem(lat, lng) {
-    const x = ((lng - lngOeste) / (lngLeste - lngOeste)) * 100
-    const y = ((latNorte - lat) / (latNorte - latSul)) * 100
-    return {
-      x: Math.max(5, Math.min(95, x)),
-      y: Math.max(5, Math.min(95, y))
+          console.log('✅ Chamada enviada!')
+          alert('✅ Busca enviada!\n\n🔔 Os cuidadores próximos foram notificados!')
+          setChamadaEnviada(true)
+          setBuscando(false)
+
+          // ✅ Apaga a chamada depois de 5 minutos se ninguém aceitar
+          setTimeout(() => {
+            setChamadaEnviada(false)
+          }, 300000)
+        },
+        (erro) => {
+          alert('⚠️ Não consegui acessar sua localização!\nAtive a localização do navegador.')
+          setBuscando(false)
+        }
+      )
+    } catch (erro) {
+      console.error(erro)
+      alert('❌ Erro ao buscar: ' + erro.message)
+      setBuscando(false)
     }
   }
 
   return (
-    <div style={{backgroundColor: '#f0f4f8', minHeight: '100vh', margin: 0, padding: 0}}>
-      
-      {/* 🗺️ MAPA — só MOSTRA quem ACEITOU */}
-      <div style={{
-        position: 'relative',
-        width: '100%',
-        height: '380px',
-        borderBottom: '4px solid #ccc',
-        overflow: 'hidden',
-        touchAction: 'none'
-      }}>
-        <iframe
-          title="Mapa"
-          width="100%"
-          height="100%"
-          frameBorder="0"
-          scrolling="no"
-          marginHeight="0"
-          marginWidth="0"
-          src={`https://www.openstreetmap.org/export/embed.html?bbox=${lngOeste}%2C${latSul}%2C${lngLeste}%2C${latNorte}&layer=mapnik&marker=${minhaPosicao.lat}%2C${minhaPosicao.lng}`}
-          style={{
-            display: 'block',
-            pointerEvents: 'none' // TRAVADO — não arrasta
-          }}
-        ></iframe>
+    <div style={{padding: '25px', textAlign: 'center'}}>
+      <h2 style={{color: '#1f2937', marginBottom: '30px'}}>🔍 Buscar Cuidador</h2>
 
-        {/* 🟢 SÓ APARECEM QUEM ACEITOU! */}
-        {cuidadoresAceitos.map((item) => {
-          const pos = coordParaPorcentagem(item.lat, item.lng)
-          return (
-            <div key={item.id} style={{
-              position: 'absolute',
-              left: `${pos.x}%`,
-              top: `${pos.y}%`,
-              transform: 'translate(-50%, -50%)',
-              backgroundColor: '#fff',
-              border: '4px solid #22c55e',
-              borderRadius: '50%',
-              width: '44px',
-              height: '44px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '22px',
-              boxShadow: '0 3px 10px rgba(34,197,94,0.35)',
-              zIndex: 5,
-              pointerEvents: 'none'
-            }} title={item.nome}>🐾</div>
-          )
-        })}
+      {!chamadaEnviada ? (
+        <>
+          <p style={{fontSize: '16px', color: '#4b5563', marginBottom: '30px'}}>
+            Clique abaixo para buscar cuidadores próximos de você!
+          </p>
 
-        {/* 🔍 Aviso de busca */}
-        {buscando && (
-          <div style={{
-            position: 'absolute',
-            top: '10px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: '#2563eb',
-            color: '#fff',
-            padding: '8px 16px',
-            borderRadius: '20px',
-            fontWeight: 'bold',
-            fontSize: '13px',
-            zIndex: 20,
-            pointerEvents: 'none'
-          }}>🔍 Procurando... Aguardando aceite...</div>
-        )}
-
-        {/* ⏳ Contador de pendentes */}
-        {solicitacoesPendentes.length > 0 && (
-          <div style={{
-            position: 'absolute',
-            top: '50px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: '#f59e0b',
-            color: '#fff',
-            padding: '6px 14px',
-            borderRadius: '20px',
-            fontWeight: 'bold',
-            fontSize: '12px',
-            zIndex: 20,
-            pointerEvents: 'none'
-          }}>⏳ {solicitacoesPendentes.length} cuidador(es) recebendo chamada...</div>
-        )}
-      </div>
-
-      {/* 🔘 Botão */}
-      <div style={{padding: '20px', textAlign: 'center'}}>
-        <button onClick={procurar} disabled={buscando} style={{
-          backgroundColor: buscando ? '#94a3b8' : '#2563eb',
-          color: '#fff',
-          border: 'none',
-          padding: '15px 35px',
-          borderRadius: '30px',
-          fontSize: '17px',
-          fontWeight: 'bold',
-          cursor: buscando ? 'not-allowed' : 'pointer',
-          boxShadow: buscando ? 'none' : '0 4px 12px rgba(37,99,235,0.3)'
-        }}>{buscando ? '🔍 Procurando...' : '🔍 Procurar Cuidadores'}</button>
-      </div>
-
-      {/* 📋 Lista — SÓ MOSTRA QUEM ACEITOU! */}
-      <div style={{padding: '0 15px 30px 15px'}}>
-        {cuidadoresAceitos.length > 0 && (
-          <h3 style={{fontSize: '16px', color: '#16a34a', marginBottom: '15px'}}>
-            ✅ {cuidadoresAceitos.length} cuidador(es) ACEITOU o pedido!
-          </h3>
-        )}
-
-        {cuidadoresAceitos.map(item => (
-          <div key={item.id} style={{
-            display: 'flex',
-            alignItems: 'center',
-            backgroundColor: '#fff',
-            padding: '14px',
-            borderRadius: '12px',
-            marginBottom: '10px',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
-          }}>
-            <span style={{fontSize: '30px'}}>🐾</span>
-            <div style={{flex: 1, marginLeft: '12px'}}>
-              <p style={{fontWeight: 'bold', margin: 0, fontSize: '15px'}}>{item.nome}</p>
-              <p style={{margin: '4px 0', fontSize: '13px', color: '#6b7280'}}>📍 {item.distancia} • {item.nota}</p>
-              <p style={{margin: 0, color: '#16a34a', fontWeight: 'bold', fontSize: '14px'}}>{item.preco} / passeio</p>
-            </div>
-            <button style={{
-              backgroundColor: '#2563eb',
+          <button
+            onClick={fazerBusca}
+            disabled={buscando}
+            style={{
+              padding: '18px 40px',
+              backgroundColor: buscando ? '#9ca3af' : '#22c55e',
               color: '#fff',
               border: 'none',
-              padding: '8px 12px',
-              borderRadius: '8px',
+              borderRadius: '50px',
+              fontSize: '18px',
               fontWeight: 'bold',
-              cursor: 'pointer',
-              fontSize: '13px'
-            }}>Contratar ✅</button>
-          </div>
-        ))}
-
-        {/* ⏳ Ainda não aceitos */}
-        {solicitacoesPendentes.length > 0 && (
-          <div style={{marginTop: '20px'}}>
-            <h4 style={{fontSize: '14px', color: '#f59e0b', marginBottom: '10px'}}>
-              ⏳ Aguardando aceite: {solicitacoesPendentes.length} cuidador(es)...
-            </h4>
-            {solicitacoesPendentes.map(item => (
-              <div key={item.id} style={{
-                backgroundColor: '#fffbeb',
-                padding: '10px 14px',
-                borderRadius: '10px',
-                marginBottom: '8px',
-                fontSize: '14px',
-                color: '#92400e'
-              }}>⏳ {item.nome} — Aguardando resposta...</div>
-            ))}
-          </div>
-        )}
-      </div>
+              cursor: buscando ? 'not-allowed' : 'pointer',
+              boxShadow: '0 4px 12px rgba(34,197,94,0.3)'
+            }}
+          >
+            {buscando ? '🔄 Buscando...' : '🐾 BUSCAR CUIDADOR'}
+          </button>
+        </>
+      ) : (
+        <div style={{padding: '30px', backgroundColor: '#dbeafe', borderRadius: '12px'}}>
+          <h3 style={{color: '#1d4ed8'}}>✅ Busca Enviada!</h3>
+          <p style={{color: '#1e40af', marginTop: '10px'}}>
+            🔔 Cuidadores próximos estão sendo notificados...<br/>
+            Aguarde alguém aceitar! 🐾
+          </p>
+          <button
+            onClick={() => setChamadaEnviada(false)}
+            style={{marginTop: '20px', padding: '10px 20px', backgroundColor: '#f97316', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer'}}
+          >
+            🔄 Fazer Nova Busca
+          </button>
+        </div>
+      )}
     </div>
   )
 }
