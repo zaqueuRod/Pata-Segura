@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { db } from "../firebase.js";
-import { ref, query, orderByChild, equalTo, get } from 'firebase/database'
+import { ref, query, orderByChild, equalTo, get, update } from 'firebase/database'
 
 export default function Login(props) {
   const [email, setEmail] = useState('')
@@ -45,6 +45,26 @@ export default function Login(props) {
       }
 
       // ✅ Login BEM-SUCEDIDO! Salva dados locais
+            // ✅ Se for CUIDADOR → Salva localização no Firebase! 📍
+      if (usuarioEncontrado.tipo === 'cuidador') {
+        navigator.geolocation.watchPosition(
+          (posicao) => {
+            const lat = posicao.coords.latitude
+            const lng = posicao.coords.longitude
+            const cuidadorRef = ref(db, `usuarios/${usuarioEncontrado.id}`)
+            update(cuidadorRef, {
+              lat: lat,
+              lng: lng,
+              ultimoOnline: new Date().toLocaleString('pt-BR')
+            })
+            console.log('📍 Localização atualizada:', lat, lng)
+          },
+          (erro) => {
+            console.log('⚠️ Não foi possível obter localização')
+          },
+          { enableHighAccuracy: true, maximumAge: 10000 }
+        )
+      }
       localStorage.setItem('usuarioLogado', JSON.stringify(usuarioEncontrado))
       
       alert(`✅ Bem-vindo, ${usuarioEncontrado.nome}!\n\nTipo: ${usuarioEncontrado.tipo === 'dono' ? '👤 Dono' : '🐾 Cuidador'}`)
