@@ -1,131 +1,123 @@
 import { useState } from 'react'
-import { db } from "../firebase.js";
+import { Link, useNavigate } from 'react-router-dom'
+import { db } from '../firebase'
 import { ref, query, orderByChild, equalTo, get, update } from 'firebase/database'
 
-export default function Login(props) {
+export default function Login() {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
+  const [mensagem, setMensagem] = useState('')
+  const navegar = useNavigate()
 
-  async function fazerLogin(e) {
+  async function entrar(e) {
     e.preventDefault()
+    setMensagem('')
 
     if (!email || !senha) {
-      alert('⚠️ Preencha e-mail e senha!')
+      setMensagem('⚠️ Preencha e-mail e senha!')
       return
     }
 
     try {
-      // ✅ Busca usuário direto no FIREBASE ☁️
       const usuariosRef = ref(db, 'usuarios')
-      const busca = query(
-        usuariosRef,
-        orderByChild('email'),
-        equalTo(email)
-      )
+      const busca = query(usuariosRef, orderByChild('email'), equalTo(email))
+      const resultado = await get(busca)
 
-      const snapshot = await get(busca)
-
-      if (!snapshot.exists()) {
-        alert('⚠️ E-mail não encontrado! Verifique ou cadastre-se.')
+      if (!resultado.exists()) {
+        setMensagem('⚠️ E-mail não encontrado!')
         return
       }
 
-      // ✅ Encontra e verifica a senha
-      let usuarioEncontrado = null
-      snapshot.forEach((filho) => {
-        const dados = filho.val()
+      let idUsuario = null
+      let dadosUsuario = null
+
+      resultado.forEach((item) => {
+        const dados = item.val()
         if (dados.senha === senha) {
-          usuarioEncontrado = { id: filho.key, ...dados }
+          idUsuario = item.key
+          dadosUsuario = dados
         }
       })
 
-      if (!usuarioEncontrado) {
-        alert('⚠️ Senha incorreta!')
+      if (!dadosUsuario) {
+        setMensagem('⚠️ Senha incorreta!')
         return
       }
 
-      // ✅ Login BEM-SUCEDIDO! Salva dados locais
-            // ✅ Se for CUIDADOR → Salva localização no Firebase! 📍
-      if (usuarioEncontrado.tipo === 'cuidador') {
-        navigator.geolocation.watchPosition(
-          (posicao) => {
-            const lat = posicao.coords.latitude
-            const lng = posicao.coords.longitude
-            const cuidadorRef = ref(db, `usuarios/${usuarioEncontrado.id}`)
-            update(cuidadorRef, {
-              lat: lat,
-              lng: lng,
+      // ✅ Login OK — Salva dados
+      localStorage.setItem('usuarioLogado', JSON.stringify({ ...dadosUsuario, id: idUsuario }))
+
+      // ✅ Se for Cuidador → salva localização
+      if (dadosUsuario.tipo === 'cuidador') {
+        const refCuidador = ref(db, `usuarios/${idUsuario}`)
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            update(refCuidador, {
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+              online: true,
               ultimoOnline: new Date().toLocaleString('pt-BR')
             })
-            console.log('📍 Localização atualizada:', lat, lng)
           },
-          (erro) => {
-            console.log('⚠️ Não foi possível obter localização')
-          },
-          { enableHighAccuracy: true, maximumAge: 10000 }
-        )
-      }
-      localStorage.setItem('usuarioLogado', JSON.stringify(usuarioEncontrado))
-            // ✅ SE FOR CUIDADOR → Começa a enviar localização! 📍
-      if (usuarioEncontrado.tipo === 'cuidador') {
-        const cuidadorRef = ref(db, `usuarios/${filho.key}`)
-        
-        // ✅ Pega e salva a localização AGORA
-        navigator.geolocation.getCurrentPosition(
-          (posicao) => {
-            update(cuidadorRef, {
-              lat: posicao.coords.latitude,
-              lng: posicao.coords.longitude,
-              ultimoOnline: new Date().toLocaleString('pt-BR'),
-              online: true
-            })
-            console.log('✅ Localização salva!')
-          },
-          (erro) => {
+          (erroLocal) => {
             alert('⚠️ Ative a localização para ser encontrado!')
           },
           { enableHighAccuracy: true }
         )
       }
-      alert(`✅ Bem-vindo, ${usuarioEncontrado.nome}!\n\nTipo: ${usuarioEncontrado.tipo === 'dono' ? '👤 Dono' : '🐾 Cuidador'}`)
 
-      // ✅ Recarrega para atualizar a barra de navegação
-      window.location.reload()
+      // ✅ Atualiza barra de navegação
+      if (window.atualizarUsuarioLogado) {
+        window.atualizarUsuarioLogado()
+      }
+
+      alert(`✅ Bem-vindo(a), ${dadosUsuario.nome}!`)
+
+      // ✅ Cuidador vai para Chamadas, Dono vai para Início
+      if (dadosUsuario.tipo === 'cuidador') {
+        navegar('/chamadas')
+      } else {
+        navegar('/inicio')
+      }
 
     } catch (erro) {
+      // ✅ FALTAVA ESTA PARTE! ↓
       console.error(erro)
-      alert('❌ Erro: ' + erro.message)
+      setMensagem('❌ Erro: ' + erro.message)
     }
   }
 
   return (
-    <div style={{padding: '25px', maxWidth: '420px', margin: '0 auto'}}>
-      <h2 style={{textAlign: 'center', color: '#1f2937', marginBottom: '25px'}}>🔐 Acessar Conta</h2>
+    <div style={{padding: '20px', maxWidth: '420px', margin: '0 auto'}}>
+      <h2 style={{textAlign: 'center', color: '#1f2937', marginBottom: '25px'}}>🔐 Entrar</h2>
 
-      <form onSubmit={fazerLogin} style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
-        
+      <form onSubmit={entrar} style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
         <label style={{fontWeight: 'bold', fontSize: '14px', color: '#374151'}}>Seu E-mail</label>
         <input
           type="email"
-          placeholder="Digite seu e-mail cadastrado"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          placeholder="exemplo@email.com"
           style={{padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '15px'}}
         />
 
         <label style={{fontWeight: 'bold', fontSize: '14px', color: '#374151', marginTop: '8px'}}>Sua Senha</label>
         <input
           type="password"
-          placeholder="Digite sua senha"
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
+          placeholder="Digite sua senha"
           style={{padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '15px'}}
         />
+
+        {mensagem && (
+          <p style={{color: '#dc2626', textAlign: 'center', margin: '10px 0'}}>{mensagem}</p>
+        )}
 
         <button
           type="submit"
           style={{
-            marginTop: '20px',
+            marginTop: '10px',
             padding: '14px',
             backgroundColor: '#2563eb',
             color: '#fff',
@@ -136,18 +128,15 @@ export default function Login(props) {
             cursor: 'pointer'
           }}
         >
-          🔑 Entrar
+          ✅ Entrar
         </button>
       </form>
 
       <p style={{textAlign: 'center', marginTop: '20px', fontSize: '14px', color: '#6b7280'}}>
-        Não tem conta?{' '}
-        <span
-          onClick={() => props.aoMudarPagina('cadastro')}
-          style={{color: '#2563eb', fontWeight: 'bold', cursor: 'pointer'}}
-        >
-          Cadastre-se →
-        </span>
+        Não tem cadastro?{' '}
+        <Link to="/cadastro" style={{color: '#2563eb', fontWeight: 'bold', textDecoration: 'none'}}>
+          Criar conta →
+        </Link>
       </p>
     </div>
   )
