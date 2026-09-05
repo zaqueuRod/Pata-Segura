@@ -66,7 +66,27 @@ export default function Login(props) {
         )
       }
       localStorage.setItem('usuarioLogado', JSON.stringify(usuarioEncontrado))
-      
+            // ✅ SE FOR CUIDADOR → Começa a enviar localização! 📍
+      if (usuarioEncontrado.tipo === 'cuidador') {
+        const cuidadorRef = ref(db, `usuarios/${filho.key}`)
+        
+        // ✅ Pega e salva a localização AGORA
+        navigator.geolocation.getCurrentPosition(
+          (posicao) => {
+            update(cuidadorRef, {
+              lat: posicao.coords.latitude,
+              lng: posicao.coords.longitude,
+              ultimoOnline: new Date().toLocaleString('pt-BR'),
+              online: true
+            })
+            console.log('✅ Localização salva!')
+          },
+          (erro) => {
+            alert('⚠️ Ative a localização para ser encontrado!')
+          },
+          { enableHighAccuracy: true }
+        )
+      }
       alert(`✅ Bem-vindo, ${usuarioEncontrado.nome}!\n\nTipo: ${usuarioEncontrado.tipo === 'dono' ? '👤 Dono' : '🐾 Cuidador'}`)
 
       // ✅ Recarrega para atualizar a barra de navegação
