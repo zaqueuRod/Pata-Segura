@@ -21,11 +21,11 @@ export default function BuscaMapa() {
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
       (pos) => setMinhaLocalizacao({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => console.log('Usando localização padrão de Itajaí-SC')
+      () => console.log('Usando localização padrão')
     )
   }, [])
 
-  // ✅ Carrega CUIDADORES com localização em TEMPO REAL ⚡
+  // ✅ Carrega CUIDADORES em TEMPO REAL ⚡
   useEffect(() => {
     const usuariosRef = ref(db, 'usuarios')
     const pararEscutar = onValue(usuariosRef, (snapshot) => {
@@ -43,7 +43,7 @@ export default function BuscaMapa() {
     return () => pararEscutar()
   }, [])
 
-  // ✅ Dono faz a BUSCA
+  // ✅ Dono envia chamada
   async function fazerBusca() {
     if (!dadosUsuario) {
       alert('⚠️ Faça login primeiro!')
@@ -67,13 +67,13 @@ export default function BuscaMapa() {
             cuidadorAceitou: null,
             hora: serverTimestamp()
           })
-          alert('✅ Busca enviada!\n\n🔔 Os cuidadores próximos foram notificados!')
+          alert('✅ Chamada enviada!\n\n🔔 Cuidadores foram notificados!')
           setChamadaEnviada(true)
           setBuscando(false)
           setTimeout(() => setChamadaEnviada(false), 300000)
         },
         () => {
-          alert('⚠️ Ative a localização do navegador!')
+          alert('⚠️ Ative a localização!')
           setBuscando(false)
         }
       )
@@ -83,25 +83,7 @@ export default function BuscaMapa() {
     }
   }
 
-  // ✅ Monta link do mapa com marcadores (versão que FUNCIONA!) 📍
-  function montarLinkMapa() {
-    let centro = `${minhaLocalizacao.lat},${minhaLocalizacao.lng}`
-    let marcadores = `${centro}` // Sua posição no centro
-
-    cuidadores.forEach((c) => {
-      marcadores += `|${c.lat},${c.lng}`
-    })
-
-    // ✅ Usa o Google Maps direto (sem API key!)
-    return `https://www.google.com/maps/dir/?api=1&origin=${centro}&destination=${centro}&waypoints=${encodeURIComponent(marcadores)}&travelmode=driving`
-  }
-
-  // ✅ Abre o mapa em nova aba
-  function abrirMapaCompleto() {
-    window.open(montarLinkMapa(), '_blank')
-  }
-
-  // ✅ Calcula distância aproximada em km
+  // ✅ Calcula distância em km
   function calcularDistancia(lat1, lng1, lat2, lng2) {
     if (!lat1 || !lng1 || !lat2 || !lng2) return '? km'
     const R = 6371
@@ -109,122 +91,136 @@ export default function BuscaMapa() {
     const dLng = (lng2 - lng1) * Math.PI / 180
     const a = Math.sin(dLat/2)**2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng/2)**2
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
-    const km = (R * c).toFixed(1)
-    return `${km} km`
+    return `${(R * c).toFixed(1)} km`
   }
 
   // ✅ Lista serviços
   function listarServicos(c) {
     const s = []
     if (c.servicos?.passear) s.push('🚶 Passeio')
-    if (c.servicos?.cuidarEmCasa) s.push('🏠 Em Casa')
+    if (c.servicos?.cuidarEmCasa) s.push('🏠 Casa')
     if (c.servicos?.medicacaoTratamento) s.push('💊 Tratamento')
     return s.join(' • ')
   }
 
+  // ✅ Constrói URL do mapa com todos os marcadores
+  function montarUrlMapa() {
+    const centro = `${minhaLocalizacao.lat},${minhaLocalizacao.lng}`
+    let marcadores = `color:blue|label:Você|${centro}`
+    
+    cuidadores.forEach((c, i) => {
+      marcadores += `&markers=color:red|label:${i+1}|${c.lat},${c.lng}`
+    })
+
+    return `https://maps.google.com/maps?q=${encodeURIComponent(marcadores)}&z=13&output=embed`
+  }
+
   return (
-    <div style={{padding: '15px', maxWidth: '480px', margin: '0 auto'}}>
-      <h2 style={{textAlign: 'center', color: '#1f2937', marginBottom: '15px'}}>🐾 Cuidadores Próximos</h2>
+    <div style={{height: '100vh', display: 'flex', flexDirection: 'column', margin: 0, padding: 0}}>
+      
+      {/* ✅ MAPA SEMPRE VISÍVEL EM CIMA 🗺️ */}
+      <div style={{flex: 1, position: 'relative'}}>
+        <iframe
+          src={montarUrlMapa()}
+          width="100%"
+          height="100%"
+          style={{border: 0}}
+          title="Mapa de Cuidadores"
+          loading="lazy"
+          allowFullScreen
+        ></iframe>
 
-      {/* ✅ BOTÃO PARA ABRIR O MAPA COMPLETO */}
-      <button
-        onClick={abrirMapaCompleto}
-        style={{
-          width: '100%',
-          padding: '14px',
-          backgroundColor: '#3b82f6',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '12px',
-          fontSize: '16px',
-          fontWeight: 'bold',
-          cursor: 'pointer',
-          marginBottom: '20px'
-        }}
-      >
-        🗺️ ABRIR MAPA COM CUIDADORES
-      </button>
+        {/* ✅ LEGENDA FLUTUANDO EM CIMA DO MAPA */}
+        <div style={{
+          position: 'absolute',
+          top: '10px',
+          left: '10px',
+          backgroundColor: 'rgba(255,255,255,0.92)',
+          padding: '8px 12px',
+          borderRadius: '8px',
+          fontSize: '13px',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
+        }}>
+          <div style={{fontWeight: 'bold', marginBottom: '4px'}}>📍 Legenda</div>
+          <div>🔵 Você</div>
+          <div>🔴 Cuidador Online</div>
+        </div>
+      </div>
 
-      <p style={{textAlign: 'center', fontSize: '13px', color: '#6b7280', marginBottom: '15px'}}>
-        Clique acima para ver todos no mapa do Google 🔵
-      </p>
-
-      {/* ✅ LISTA com distância */}
-      {cuidadores.length > 0 ? (
-        <div style={{display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '25px'}}>
-          <h3 style={{fontSize: '15px', color: '#374151', margin: '0 0 10px 0'}}>📍 Cuidadores Disponíveis</h3>
-          
-          {cuidadores.map((c, i) => (
-            <div key={c.id} style={{
-              padding: '14px',
-              backgroundColor: '#f0fdf4',
-              borderRadius: '12px',
-              border: '1px solid #bbf7d0',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.04)'
-            }}>
-              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
-                <strong style={{color: '#166534', fontSize: '16px'}}>🐾 {c.nome}</strong>
-                <span style={{fontSize: '13px', backgroundColor: '#dbeafe', padding: '2px 8px', borderRadius: '12px', color: '#1e40af'}}>
-                  📍 {calcularDistancia(minhaLocalizacao.lat, minhaLocalizacao.lng, c.lat, c.lng)}
-                </span>
-              </div>
-              
-              <p style={{margin: '6px 0', fontSize: '15px', fontWeight: 'bold', color: '#15803d'}}>
-                💰 R$ {c.valorHora?.toFixed(2).replace('.', ',') || '0,00'}/hora
-              </p>
-              
-              <p style={{margin: '4px 0', fontSize: '13px', color: '#4b5563'}}>
-                {listarServicos(c) || 'Serviços não informados'}
-              </p>
-              
-              {c.observacoes && (
-                <p style={{margin: '6px 0 0 0', fontSize: '12px', color: '#6b7280', fontStyle: 'italic'}}>
-                  📝 {c.observacoes}
+      {/* ✅ ÁREA DE INFORMAÇÕES E BOTÕES EM BAIXO */}
+      <div style={{
+        padding: '15px',
+        backgroundColor: '#fff',
+        borderTop: '1px solid #e5e7eb',
+        boxShadow: '0 -4px 12px rgba(0,0,0,0.05)'
+      }}>
+        
+        {/* ✅ LISTA DE CUIDADORES */}
+        {cuidadores.length > 0 ? (
+          <div style={{maxHeight: '160px', overflowY: 'auto', marginBottom: '15px'}}>
+            <h4 style={{margin: '0 0 10px 0', color: '#374151', fontSize: '14px'}}>🐾 Cuidadores Próximos</h4>
+            {cuidadores.map((c, i) => (
+              <div key={c.id} style={{
+                padding: '10px',
+                backgroundColor: '#fef3c7',
+                borderRadius: '8px',
+                marginBottom: '8px',
+                border: '1px solid #fcd34d'
+              }}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                  <strong style={{color: '#92400e'}}>{i+1}. {c.nome}</strong>
+                  <span style={{fontSize: '12px', backgroundColor: '#fef9c3', padding: '2px 6px', borderRadius: '10px'}}>
+                    📍 {calcularDistancia(minhaLocalizacao.lat, minhaLocalizacao.lng, c.lat, c.lng)}
+                  </span>
+                </div>
+                <p style={{margin: '4px 0', fontSize: '13px', color: '#15803d'}}>
+                  💰 R$ {c.valorHora?.toFixed(2).replace('.', ',') || '0,00'}/hora
                 </p>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{textAlign: 'center', padding: '30px 15px', color: '#6b7280'}}>
-          <p style={{fontSize: '36px', margin: '0'}}>📍</p>
-          <p style={{marginTop: '10px'}}>Nenhum cuidador disponível no momento</p>
-          <p style={{fontSize: '13px'}}>Peça para algum cuidador fazer login e ativar a localização!</p>
-        </div>
-      )}
+                <p style={{margin: '2px 0 0 0', fontSize: '12px', color: '#6b7280'}}>
+                  {listarServicos(c)}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{textAlign: 'center', padding: '10px', color: '#9ca3af', marginBottom: '15px'}}>
+            📍 Nenhum cuidador disponível no momento
+          </div>
+        )}
 
-      {/* ✅ BOTÃO DE BUSCA / NOTIFICAÇÃO */}
-      {!chamadaEnviada ? (
-        <button
-          onClick={fazerBusca}
-          disabled={buscando}
-          style={{
-            width: '100%',
-            padding: '15px',
-            backgroundColor: buscando ? '#9ca3af' : '#22c55e',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '12px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: buscando ? 'not-allowed' : 'pointer',
-            marginTop: '10px'
-          }}
-        >
-          {buscando ? '🔄 Enviando...' : '🔔 NOTIFICAR CUIDADORES'}
-        </button>
-      ) : (
-        <div style={{padding: '20px', backgroundColor: '#dbeafe', borderRadius: '12px', textAlign: 'center', marginTop: '10px'}}>
-          <h3 style={{color: '#1d4ed8', margin: '0'}}>✅ Notificação Enviada!</h3>
-          <p style={{color: '#1e40af', marginTop: '8px'}}>🔔 Cuidadores foram avisados!</p>
+        {/* ✅ BOTÃO PRINCIPAL */}
+        {!chamadaEnviada ? (
           <button
-            onClick={() => setChamadaEnviada(false)}
-            style={{marginTop: '12px', padding: '10px 18px', backgroundColor: '#f97316', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer'}}
+            onClick={fazerBusca}
+            disabled={buscando}
+            style={{
+              width: '100%',
+              padding: '16px',
+              backgroundColor: buscando ? '#9ca3af' : '#22c55e',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '12px',
+              fontSize: '17px',
+              fontWeight: 'bold',
+              cursor: buscando ? 'not-allowed' : 'pointer',
+              boxShadow: '0 4px 12px rgba(34,197,94,0.3)'
+            }}
           >
-            🔄 Nova Busca
+            {buscando ? '🔄 Enviando...' : '🔔 NOTIFICAR CUIDADORES PRÓXIMOS'}
           </button>
-        </div>
-      )}
+        ) : (
+          <div style={{padding: '15px', backgroundColor: '#dbeafe', borderRadius: '12px', textAlign: 'center'}}>
+            <h3 style={{color: '#1d4ed8', margin: '0 0 5px 0', fontSize: '15px'}}>✅ Chamada Enviada!</h3>
+            <p style={{color: '#1e40af', fontSize: '13px', margin: '0 0 10px 0'}}>Aguarde algum cuidador aceitar...</p>
+            <button
+              onClick={() => setChamadaEnviada(false)}
+              style={{padding: '8px 16px', backgroundColor: '#f97316', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px'}}
+            >
+              🔄 Nova Chamada
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
