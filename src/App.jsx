@@ -9,6 +9,7 @@ import PaginaStatus from './Paginas/PaginaStatus'
 
 export default function App() {
   const [usuarioLogado, setUsuarioLogado] = useState(null)
+  const navegar = useNavigate()
 
   function atualizarUsuario() {
     const salvo = localStorage.getItem('usuarioLogado')
@@ -46,7 +47,7 @@ export default function App() {
         zIndex: 999
       }}>
         <button 
-          onClick={() => useNavigate.navigate('/inicio')}
+          onClick={() => navegar('/inicio')}
           style={{ border: 'none', background: 'transparent', fontSize: '14px', cursor: 'pointer', color: '#374151' }}
         >
           Início
@@ -54,7 +55,7 @@ export default function App() {
 
         {usuarioLogado?.tipo === 'dono' && (
           <button 
-            onClick={() => useNavigate.navigate('/busca')}
+            onClick={() => navegar('/busca')}
             style={{ border: 'none', background: 'transparent', fontSize: '14px', cursor: 'pointer', color: '#22c55e', fontWeight: 'bold' }}
           >
             Buscar
@@ -63,7 +64,7 @@ export default function App() {
 
         {usuarioLogado?.tipo === 'cuidador' && (
           <button 
-            onClick={() => useNavigate.navigate('/chamadas')}
+            onClick={() => navegar('/chamadas')}
             style={{ border: 'none', background: 'transparent', fontSize: '14px', cursor: 'pointer', color: '#2563eb', fontWeight: 'bold' }}
           >
             Chamadas
@@ -72,7 +73,7 @@ export default function App() {
 
         {usuarioLogado?.tipo === 'cuidador' && (
           <button 
-            onClick={() => useNavigate.navigate('/status')}
+            onClick={() => navegar('/status')}
             style={{ border: 'none', background: 'transparent', fontSize: '14px', cursor: 'pointer', color: '#f97316', fontWeight: 'bold' }}
           >
             Status
@@ -82,13 +83,13 @@ export default function App() {
         {!usuarioLogado && (
           <>
             <button 
-              onClick={() => useNavigate.navigate('/entrar')}
+              onClick={() => navegar('/entrar')}
               style={{ border: 'none', background: 'transparent', fontSize: '14px', cursor: 'pointer', color: '#374151' }}
             >
               Entrar
             </button>
             <button 
-              onClick={() => useNavigate.navigate('/cadastro')}
+              onClick={() => navegar('/cadastro')}
               style={{ border: 'none', background: 'transparent', fontSize: '14px', cursor: 'pointer', color: '#374151' }}
             >
               Cadastrar
