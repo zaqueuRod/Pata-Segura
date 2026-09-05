@@ -44,10 +44,8 @@ export default function Login() {
         return
       }
 
-      // ✅ Login OK — Salva dados
       localStorage.setItem('usuarioLogado', JSON.stringify({ ...dadosUsuario, id: idUsuario }))
 
-      // ✅ Se for Cuidador → salva localização
       if (dadosUsuario.tipo === 'cuidador') {
         const refCuidador = ref(db, `usuarios/${idUsuario}`)
         navigator.geolocation.getCurrentPosition(
@@ -55,25 +53,21 @@ export default function Login() {
             update(refCuidador, {
               lat: pos.coords.latitude,
               lng: pos.coords.longitude,
-              online: true,
-              ultimoOnline: new Date().toLocaleString('pt-BR')
+              online: true
             })
           },
-          (erroLocal) => {
-            alert('⚠️ Ative a localização para ser encontrado!')
+          () => {
+            setMensagem('⚠️ Ative a localização para ser encontrado!')
           },
           { enableHighAccuracy: true }
         )
       }
 
-      // ✅ Atualiza barra de navegação
       if (window.atualizarUsuarioLogado) {
         window.atualizarUsuarioLogado()
       }
 
-      alert(`✅ Bem-vindo(a), ${dadosUsuario.nome}!`)
-
-      // ✅ Cuidador vai para Chamadas, Dono vai para Início
+      // ✅ REMOVI O ALERTA! Agora navega direto sem avisos! 🎉
       if (dadosUsuario.tipo === 'cuidador') {
         navegar('/chamadas')
       } else {
@@ -81,9 +75,8 @@ export default function Login() {
       }
 
     } catch (erro) {
-      // ✅ FALTAVA ESTA PARTE! ↓
-      console.error(erro)
-      setMensagem('❌ Erro: ' + erro.message)
+      console.log(erro)
+      setMensagem('❌ Erro ao entrar!')
     }
   }
 
@@ -110,33 +103,15 @@ export default function Login() {
           style={{padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '15px'}}
         />
 
-        {mensagem && (
-          <p style={{color: '#dc2626', textAlign: 'center', margin: '10px 0'}}>{mensagem}</p>
-        )}
+        {mensagem && <p style={{color: '#dc2626', textAlign: 'center', margin: '10px 0'}}>{mensagem}</p>}
 
-        <button
-          type="submit"
-          style={{
-            marginTop: '10px',
-            padding: '14px',
-            backgroundColor: '#2563eb',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '10px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: 'pointer'
-          }}
-        >
+        <button type="submit" style={{marginTop: '10px', padding: '14px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer'}}>
           ✅ Entrar
         </button>
       </form>
 
-      <p style={{textAlign: 'center', marginTop: '20px', fontSize: '14px', color: '#6b7280'}}>
-        Não tem cadastro?{' '}
-        <Link to="/cadastro" style={{color: '#2563eb', fontWeight: 'bold', textDecoration: 'none'}}>
-          Criar conta →
-        </Link>
+      <p style={{textAlign: 'center', marginTop: '20px', fontSize: '14px'}}>
+        Não tem cadastro? <Link to="/cadastro" style={{color: '#2563eb', fontWeight: 'bold'}}>Criar conta →</Link>
       </p>
     </div>
   )
