@@ -1,150 +1,193 @@
 import { useState, useEffect } from 'react'
+import { db } from '../firebase'
+import { ref, get, update, onValue, push, set, serverTimestamp } from 'firebase/database'
 
 export default function PaginaStatus() {
-  // Estado de conexão: online ou offline
-  const [estaOnline, setEstaOnline] = useState(false)
-  // Saldo acumulado da semana (você pode ligar com sua API depois)
-  const [saldoSemana, setSaldoSemana] = useState(0)
+  const [usuario, setUsuario] = useState(null)
+  const [saldo, setSaldo] = useState(0)
+  const [online, setOnline] = useState(false)
+  const [carregando, setCarregando] = useState(true)
+  const [mensagem, setMensagem] = useState('')
 
-  // Carregar status e saldo salvos quando abrir a página
+  // ✅ Carrega dados do cuidador logado
   useEffect(() => {
-    const statusSalvo = localStorage.getItem('cuidador_online')
-    const saldoSalvo = localStorage.getItem('saldo_semana')
-    
-    if (statusSalvo === 'sim') setEstaOnline(true)
-    if (saldoSalvo) setSaldoSemana(parseFloat(saldoSalvo))
+    const dadosSalvos = localStorage.getItem('usuarioLogado')
+    if (!dadosSalvos) {
+      setCarregando(false)
+      return
+    }
+
+    const usuarioLogado = JSON.parse(dadosSalvos)
+    setUsuario(usuarioLogado)
+
+    // ✅ Escuta ALTERAÇÕES em TEMPO REAL no Firebase
+    const refCuidador = ref(db, `usuarios/${usuarioLogado.id}`)
+    const pararEscuta = onValue(refCuidador, (snapshot) => {
+      if (snapshot.exists()) {
+        const dados = snapshot.val()
+        setSaldo(dados.saldoSemana || 0)
+        setOnline(dados.online || false)
+      }
+      setCarregando(false)
+    })
+
+    return () => pararEscuta()
   }, [])
 
-  // Salvar status sempre que mudar
-  useEffect(() => {
-    localStorage.setItem('cuidador_online', estaOnline ? 'sim' : 'nao')
-  }, [estaOnline])
+  // ✅ Alternar Online / Offline
+  async function alternarStatus() {
+    if (!usuario) return
+    const novoStatus = !online
+    setOnline(novoStatus) // Atualiza na hora na tela
 
-  // ✅ Função para buscar o saldo real da semana
-  // (Aqui você vai conectar com seus dados/pedidos reais)
-  useEffect(() => {
-    // EXEMPLO: somar valores dos pedidos da semana
-    // Você substituirá isso pela sua lógica de pedidos
-    const pedidosFinalizados = [
-      { valor: 35 },
-      { valor: 45 },
-      { valor: 28.50 },
-    ]
+    try {
+      const refCuidador = ref(db, `usuarios/${usuario.id}`)
+      await update(refCuidador, {
+        online: novoStatus,
+        ultimoOnline: new Date().toLocaleString('pt-BR')
+      })
+    } catch (erro) {
+      setMensagem('❌ Erro ao atualizar status!')
+      setOnline(!novoStatus) // Volta se der erro
+    }
+  }
 
-    const total = pedidosFinalizados.reduce((soma, p) => soma + p.valor, 0)
-    setSaldoSemana(total)
-    localStorage.setItem('saldo_semana', total.toString())
-  }, [])
+  // ✅ Função de SAQUE
+  async function solicitarSaque() {
+    if (!usuario) return
+    if (saldo <= 0) {
+      setMensagem('⚠️ Você não tem saldo para sacar!')
+      return
+    }
 
-  // Formatar valor em Real brasileiro
-  const formatarMoeda = (valor) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(valor)
+    const valorSaque = saldo
+    const confirmar = window.confirm(
+      `💰 Confirmar saque de R$ ${valorSaque.toFixed(2).replace('.', ',')}?\n\n` +
+      'O saldo será zerado e o pedido registrado.'
+    )
+    if (!confirmar) return
+
+    try {
+      const refCuidador = ref(db, `usuarios/${usuario.id}`)
+      const refSaques = ref(db, `saques`)
+
+      // ✅ 1. Registra o saque no histórico
+      const novoSaque = push(refSaques)
+      await set(novoSaque, {
+        idSaque: novoSaque.key,
+        idCuidador: usuario.id,
+        nomeCuidador: usuario.nome,
+        valor: valorSaque,
+        data: new Date().toLocaleString('pt-BR'),
+        status: 'pendente',
+        solicitadoEm: serverTimestamp()
+      })
+
+      // ✅ 2. Zera o saldo do cuidador
+      await update(refCuidador, {
+        saldoSemana: 0
+      })
+
+      setSaldo(0)
+      setMensagem(`✅ Saque de R$ ${valorSaque.toFixed(2).replace('.', ',')} solicitado!`)
+    } catch (erro) {
+      console.error(erro)
+      setMensagem('❌ Erro ao solicitar saque!')
+    }
+  }
+
+  if (carregando) {
+    return (
+      <div style={{padding: '30px', textAlign: 'center'}}>
+        <h3>🔄 Carregando...</h3>
+      </div>
+    )
+  }
+
+  if (!usuario || usuario.tipo !== 'cuidador') {
+    return (
+      <div style={{padding: '30px', textAlign: 'center'}}>
+        <h3>⚠️ Área exclusiva para Cuidadores</h3>
+        <p>Faça login como cuidador para acessar.</p>
+      </div>
+    )
   }
 
   return (
-    <div style={estilos.pagina}>
-      <div style={estilos.cartao}>
-        <h2 style={estilos.titulo}>Meu Status</h2>
+    <div style={{padding: '20px', maxWidth: '420px', margin: '0 auto'}}>
+      <h2 style={{textAlign: 'center', color: '#1f2937', marginBottom: '30px'}}>🐾 Meu Status</h2>
 
-        {/* Botão Online / Offline */}
-        <div style={estilos.areaStatus}>
-          <span style={estilos.textoStatus}>
-            {estaOnline ? '🟢 Disponível' : '🔴 Indisponível'}
-          </span>
-          
-          <button
-            onClick={() => setEstaOnline(!estaOnline)}
-            style={{
-              ...estilos.botao,
-              backgroundColor: estaOnline ? '#22c55e' : '#ef4444'
-            }}
-          >
-            {estaOnline ? 'Ficar Offline' : 'Ficar Online'}
-          </button>
-        </div>
+      {/* ✅ SALDO */}
+      <div style={{
+        backgroundColor: '#f0fdf4',
+        padding: '25px',
+        borderRadius: '16px',
+        textAlign: 'center',
+        marginBottom: '25px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+      }}>
+        <p style={{fontSize: '15px', color: '#166534', margin: '0 0 10px 0'}}>💰 Saldo da Semana</p>
+        <p style={{fontSize: '32px', fontWeight: 'bold', color: '#15803d', margin: 0}}>
+          R$ {saldo.toFixed(2).replace('.', ',')}
+        </p>
+      </div>
 
-        <div style={estilos.divisor} />
+      {/* ✅ BOTÃO ONLINE / OFFLINE */}
+      <button
+        onClick={alternarStatus}
+        style={{
+          width: '100%',
+          padding: '16px',
+          backgroundColor: online ? '#22c55e' : '#6b7280',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '12px',
+          fontSize: '17px',
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          marginBottom: '15px',
+          boxShadow: online ? '0 4px 12px rgba(34,197,94,0.3)' : 'none'
+        }}
+      >
+        {online ? '🟢 DISPONÍVEL (Online)' : '⚫ INDISPONÍVEL (Offline)'}
+      </button>
 
-        {/* Saldo da Semana */}
-        <div style={estilos.areaSaldo}>
-          <h3 style={estilos.rotuloSaldo}>💰 Saldo da Semana</h3>
-          <p style={estilos.valorSaldo}>{formatarMoeda(saldoSemana)}</p>
-          <p style={estilos.legenda}>Total dos serviços finalizados</p>
-        </div>
+      {/* ✅ BOTÃO DE SAQUE */}
+      <button
+        onClick={solicitarSaque}
+        disabled={saldo <= 0}
+        style={{
+          width: '100%',
+          padding: '16px',
+          backgroundColor: saldo > 0 ? '#f97316' : '#d1d5db',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '12px',
+          fontSize: '17px',
+          fontWeight: 'bold',
+          cursor: saldo > 0 ? 'pointer' : 'not-allowed',
+          boxShadow: saldo > 0 ? '0 4px 12px rgba(249,115,22,0.3)' : 'none'
+        }}
+      >
+        💸 SACAR VALOR TOTAL
+      </button>
+
+      {/* ✅ MENSAGENS */}
+      {mensagem && (
+        <p style={{textAlign: 'center', marginTop: '20px', fontSize: '15px', color: mensagem.startsWith('✅') ? '#15803d' : '#dc2626'}}>
+          {mensagem}
+        </p>
+      )}
+
+      {/* ✅ INFORMAÇÕES */}
+      <div style={{marginTop: '30px', padding: '15px', backgroundColor: '#f3f4f6', borderRadius: '10px', fontSize: '13px', color: '#4b5563'}}>
+        <p><strong>📌 Como funciona:</strong></p>
+        <ul style={{margin: '8px 0', paddingLeft: '20px'}}>
+          <li>Fique <strong>Disponível</strong> para receber chamadas</li>
+          <li>O valor dos serviços é adicionado ao saldo automaticamente</li>
+          <li>Ao sacar, o saldo é zerado e o pedido é registrado</li>
+        </ul>
       </div>
     </div>
   )
-}
-
-// Estilos simples direto no código
-const estilos = {
-  pagina: {
-    minHeight: '100vh',
-    backgroundColor: '#f0f4f8',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '20px'
-  },
-  cartao: {
-    backgroundColor: '#fff',
-    borderRadius: '16px',
-    padding: '32px',
-    width: '100%',
-    maxWidth: '420px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
-  },
-  titulo: {
-    textAlign: 'center',
-    fontSize: '24px',
-    marginBottom: '32px',
-    color: '#1f2937'
-  },
-  areaStatus: {
-    textAlign: 'center',
-    marginBottom: '24px'
-  },
-  textoStatus: {
-    display: 'block',
-    fontSize: '20px',
-    fontWeight: '600',
-    marginBottom: '16px'
-  },
-  botao: {
-    padding: '12px 32px',
-    fontSize: '17px',
-    fontWeight: 'bold',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '10px',
-    cursor: 'pointer',
-    transition: 'opacity 0.2s'
-  },
-  divisor: {
-    height: '1px',
-    backgroundColor: '#e5e7eb',
-    margin: '28px 0'
-  },
-  areaSaldo: {
-    textAlign: 'center'
-  },
-  rotuloSaldo: {
-    fontSize: '18px',
-    color: '#4b5563',
-    margin: '0 0 8px 0'
-  },
-  valorSaldo: {
-    fontSize: '36px',
-    fontWeight: 'bold',
-    color: '#16a34a',
-    margin: '0 0 6px 0'
-  },
-  legenda: {
-    fontSize: '14px',
-    color: '#6b7280',
-    margin: 0
-  }
 }
