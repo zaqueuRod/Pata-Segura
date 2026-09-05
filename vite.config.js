@@ -3,5 +3,5 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/Pata-Segura/', // ✅ ISSO É MUITO IMPORTANTE!
+  base: '/Pata-Segura/',
 })

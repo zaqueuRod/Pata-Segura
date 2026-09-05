@@ -6,7 +6,6 @@ import App from './App.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    {/* ✅ Adicionei o basename! */}
     <Router basename="/Pata-Segura">
       <App />
     </Router>
