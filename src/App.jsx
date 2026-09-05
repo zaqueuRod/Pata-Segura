@@ -46,7 +46,7 @@ export default function App() {
         zIndex: 999
       }}>
         <button 
-          onClick={() => window.location.href = '/Pata-Segura/inicio'}
+          onClick={() => useNavigate.navigate('/inicio')}
           style={{ border: 'none', background: 'transparent', fontSize: '14px', cursor: 'pointer', color: '#374151' }}
         >
           Início
@@ -54,7 +54,7 @@ export default function App() {
 
         {usuarioLogado?.tipo === 'dono' && (
           <button 
-            onClick={() => window.location.href = '/Pata-Segura/busca'}
+            onClick={() => useNavigate.navigate('/busca')}
             style={{ border: 'none', background: 'transparent', fontSize: '14px', cursor: 'pointer', color: '#22c55e', fontWeight: 'bold' }}
           >
             Buscar
@@ -63,7 +63,7 @@ export default function App() {
 
         {usuarioLogado?.tipo === 'cuidador' && (
           <button 
-            onClick={() => window.location.href = '/Pata-Segura/chamadas'}
+            onClick={() => useNavigate.navigate('/chamadas')}
             style={{ border: 'none', background: 'transparent', fontSize: '14px', cursor: 'pointer', color: '#2563eb', fontWeight: 'bold' }}
           >
             Chamadas
@@ -72,7 +72,7 @@ export default function App() {
 
         {usuarioLogado?.tipo === 'cuidador' && (
           <button 
-            onClick={() => window.location.href = '/Pata-Segura/status'}
+            onClick={() => useNavigate.navigate('/status')}
             style={{ border: 'none', background: 'transparent', fontSize: '14px', cursor: 'pointer', color: '#f97316', fontWeight: 'bold' }}
           >
             Status
@@ -82,13 +82,13 @@ export default function App() {
         {!usuarioLogado && (
           <>
             <button 
-              onClick={() => window.location.href = '/Pata-Segura/entrar'}
+              onClick={() => useNavigate.navigate('/entrar')}
               style={{ border: 'none', background: 'transparent', fontSize: '14px', cursor: 'pointer', color: '#374151' }}
             >
               Entrar
             </button>
             <button 
-              onClick={() => window.location.href = '/Pata-Segura/cadastro'}
+              onClick={() => useNavigate.navigate('/cadastro')}
               style={{ border: 'none', background: 'transparent', fontSize: '14px', cursor: 'pointer', color: '#374151' }}
             >
               Cadastrar
