@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { db } from '../firebase'
+import { db, auth } from '../firebase'
 import { ref, get, child } from 'firebase/database'
+// ✅ Importa a função de redefinição
+import { sendPasswordResetEmail } from 'firebase/auth'
 
 export default function Login() {
   const navegar = useNavigate()
@@ -16,12 +18,60 @@ export default function Login() {
     setFormulario({ ...formulario, [name]: value })
   }
 
+  // ✅ FUNÇÃO RECUPERAR SENHA
+  async function recuperarSenha() {
+  setMensagem('')
+
+  // 🔑 Verifica se o campo está preenchido
+  if (!formulario.email || formulario.email.trim() === '') {
+    setMensagem('⚠️ Digite seu e-mail primeiro!')
+    return
+  }
+
+  try {
+    // ✅ PRIMEIRO: Verifica se o e-mail existe no nosso banco
+    const usuariosRef = ref(db, 'usuarios')
+    const snapshot = await get(child(usuariosRef, '/'))
+
+    if (!snapshot.exists()) {
+      setMensagem('❌ Nenhum usuário cadastrado no sistema')
+      return
+    }
+
+    const todosUsuarios = snapshot.val()
+    let existe = false
+
+    for (const id in todosUsuarios) {
+      if (todosUsuarios[id].email === formulario.email) {
+        existe = true
+        break
+      }
+    }
+
+    if (!existe) {
+      setMensagem('❌ Este e-mail não está cadastrado')
+      return
+    }
+
+    // ✅ SÓ AGORA: Envia o link de redefinição
+    await sendPasswordResetEmail(auth, formulario.email)
+    setMensagem('✅ Link enviado! Verifique sua caixa de entrada 📧')
+
+  } catch (erro) {
+    console.error('Erro:', erro)
+    if (erro.code === 'auth/invalid-email') {
+      setMensagem('❌ Digite um e-mail válido')
+    } else {
+      setMensagem(`❌ Erro: ${erro.message}`)
+    }
+  }
+}
+
   async function aoEntrar(e) {
     e.preventDefault()
     setMensagem('')
 
     try {
-      // ✅ Busca no Firebase
       const usuariosRef = ref(db, 'usuarios')
       const snapshot = await get(child(usuariosRef, '/'))
 
@@ -33,7 +83,6 @@ export default function Login() {
       const todosUsuarios = snapshot.val()
       let usuarioEncontrado = null
 
-      // Procura o usuário com esse e-mail
       for (const id in todosUsuarios) {
         const usuario = todosUsuarios[id]
         if (usuario.email === formulario.email) {
@@ -52,29 +101,26 @@ export default function Login() {
         return
       }
 
-      // ✅ Salva o usuário logado
       localStorage.setItem('usuarioLogado', JSON.stringify(usuarioEncontrado))
       setMensagem('✅ Entrando...')
 
-      // ✅ Navegação CORRETA — sem caminho extra
       setTimeout(() => {
         navegar('/')
-        // Atualiza a barra de navegação se precisar
         if (window.atualizarUsuarioLogado) {
           window.atualizarUsuarioLogado()
         }
       }, 500)
 
     } catch (erro) {
-      console.error('ERRO COMPLETO:', erro)
-      setMensagem(`❌ Erro ao entrar: ${erro.message}`)
+      console.error('ERRO:', erro)
+      setMensagem(`❌ Erro: ${erro.message}`)
     }
   }
 
   return (
     <div style={estilos.pagina}>
       <div style={estilos.container}>
-        <h1 style={estilos.titulo}>🔐 Entrar</h1>
+        <h1 style={estilos.titulo}> Entrar</h1>
 
         {mensagem && <div style={estilos.mensagem}>{mensagem}</div>}
 
@@ -105,13 +151,22 @@ export default function Login() {
             />
           </div>
 
+          {/*  BOTÃO FUNCIONAL DE RECUPERAR SENHA */}
+          <button
+            type="button"
+            onClick={recuperarSenha}
+            style={estilos.esqueceuSenha}
+          >
+            Esqueceu sua senha?
+          </button>
+
           <button type="submit" style={estilos.botao}>
-            ✅ Entrar
+             Entrar
           </button>
         </form>
 
         <p style={estilos.textoCadastro}>
-          Não tem conta? <Link to="/cadastrar" style={estilos.link}>Cadastre-se</Link>
+          Não tem conta? <Link to="/cadastro" style={estilos.link}>Cadastre-se</Link>
         </p>
       </div>
     </div>
@@ -169,6 +224,16 @@ const estilos = {
     borderRadius: '10px',
     fontSize: '16px',
     outline: 'none'
+  },
+  esqueceuSenha: {
+    alignSelf: 'flex-end',
+    background: 'transparent',
+    border: 'none',
+    color: '#2563eb',
+    fontSize: '13px',
+    cursor: 'pointer',
+    padding: '4px 0',
+    marginBottom: '8px'
   },
   botao: {
     marginTop: '8px',

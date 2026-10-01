@@ -1,8 +1,9 @@
 // src/firebase.js
 import { initializeApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
+import { getAuth } from 'firebase/auth'
 
-// ✅ COLE AQUI O SEU CÓDIGO QUE COPIOU NO PASSO 2!
+
 const firebaseConfig = {
   apiKey: "AIzaSyAlWMxmVrIyZTE9zGvGFDLxakC8ISuDRh4",
   authDomain: "pata-segura-62590.firebaseapp.com",
@@ -13,10 +14,11 @@ const firebaseConfig = {
   appId: "1:838908568150:web:ee287068346b83ba9151f7"
 };
 
-// ✅ Inicializa o Firebase
+
 const app = initializeApp(firebaseConfig);
 
-// ✅ Conecta ao Banco de Dados em TEMPO REAL
+
 const db = getDatabase(app);
+export const auth = getAuth(app)
 
 export { db };

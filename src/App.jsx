@@ -12,7 +12,7 @@ import PagamentoPix from './Paginas/PagamentoPix'
 import CadastrarCartao from './Paginas/CadastrarCartao'
 import ConfirmarPagamento from './Paginas/ConfirmarPagamento'
 import PagamentoStripe from './Paginas/PagamentoStripe'
-import Pedidos from './Paginas/Pedidos'
+import Pedidos from './Paginas/Pedidos.jsx'
 function Navegacao({ usuarioLogado }) {
   const navegar = useNavigate()
 
