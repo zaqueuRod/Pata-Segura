@@ -1,118 +1,195 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { db } from '../firebase'
-import { ref, query, orderByChild, equalTo, get, update } from 'firebase/database'
+import { ref, get, child } from 'firebase/database'
 
 export default function Login() {
-  const [email, setEmail] = useState('')
-  const [senha, setSenha] = useState('')
-  const [mensagem, setMensagem] = useState('')
   const navegar = useNavigate()
+  const [formulario, setFormulario] = useState({
+    email: '',
+    senha: ''
+  })
+  const [mensagem, setMensagem] = useState('')
 
-  async function entrar(e) {
+  function aoDigitar(e) {
+    const { name, value } = e.target
+    setFormulario({ ...formulario, [name]: value })
+  }
+
+  async function aoEntrar(e) {
     e.preventDefault()
     setMensagem('')
 
-    if (!email || !senha) {
-      setMensagem('⚠️ Preencha e-mail e senha!')
-      return
-    }
-
     try {
+      // ✅ Busca no Firebase
       const usuariosRef = ref(db, 'usuarios')
-      const busca = query(usuariosRef, orderByChild('email'), equalTo(email))
-      const resultado = await get(busca)
+      const snapshot = await get(child(usuariosRef, '/'))
 
-      if (!resultado.exists()) {
-        setMensagem('⚠️ E-mail não encontrado!')
+      if (!snapshot.exists()) {
+        setMensagem('❌ Nenhum usuário cadastrado')
         return
       }
 
-      let idUsuario = null
-      let dadosUsuario = null
+      const todosUsuarios = snapshot.val()
+      let usuarioEncontrado = null
 
-      resultado.forEach((item) => {
-        const dados = item.val()
-        if (dados.senha === senha) {
-          idUsuario = item.key
-          dadosUsuario = dados
+      // Procura o usuário com esse e-mail
+      for (const id in todosUsuarios) {
+        const usuario = todosUsuarios[id]
+        if (usuario.email === formulario.email) {
+          usuarioEncontrado = { ...usuario, id }
+          break
         }
-      })
+      }
 
-      if (!dadosUsuario) {
-        setMensagem('⚠️ Senha incorreta!')
+      if (!usuarioEncontrado) {
+        setMensagem('❌ E-mail não encontrado')
         return
       }
 
-      localStorage.setItem('usuarioLogado', JSON.stringify({ ...dadosUsuario, id: idUsuario }))
-
-      if (dadosUsuario.tipo === 'cuidador') {
-        const refCuidador = ref(db, `usuarios/${idUsuario}`)
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            update(refCuidador, {
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude,
-              online: true
-            })
-          },
-          () => {
-            setMensagem('⚠️ Ative a localização para ser encontrado!')
-          },
-          { enableHighAccuracy: true }
-        )
+      if (usuarioEncontrado.senha !== formulario.senha) {
+        setMensagem('❌ Senha incorreta')
+        return
       }
 
-      if (window.atualizarUsuarioLogado) {
-        window.atualizarUsuarioLogado()
-      }
+      // ✅ Salva o usuário logado
+      localStorage.setItem('usuarioLogado', JSON.stringify(usuarioEncontrado))
+      setMensagem('✅ Entrando...')
 
-      // ✅ REMOVI O ALERTA! Agora navega direto sem avisos! 🎉
-      if (dadosUsuario.tipo === 'cuidador') {
-        navegar('/chamadas')
-      } else {
-        navegar('/inicio')
-      }
+      // ✅ Navegação CORRETA — sem caminho extra
+      setTimeout(() => {
+        navegar('/')
+        // Atualiza a barra de navegação se precisar
+        if (window.atualizarUsuarioLogado) {
+          window.atualizarUsuarioLogado()
+        }
+      }, 500)
 
     } catch (erro) {
-      console.log(erro)
-      setMensagem('❌ Erro ao entrar!')
+      console.error('ERRO COMPLETO:', erro)
+      setMensagem(`❌ Erro ao entrar: ${erro.message}`)
     }
   }
 
   return (
-    <div style={{padding: '20px', maxWidth: '420px', margin: '0 auto'}}>
-      <h2 style={{textAlign: 'center', color: '#1f2937', marginBottom: '25px'}}>🔐 Entrar</h2>
+    <div style={estilos.pagina}>
+      <div style={estilos.container}>
+        <h1 style={estilos.titulo}>🔐 Entrar</h1>
 
-      <form onSubmit={entrar} style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
-        <label style={{fontWeight: 'bold', fontSize: '14px', color: '#374151'}}>Seu E-mail</label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="exemplo@email.com"
-          style={{padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '15px'}}
-        />
+        {mensagem && <div style={estilos.mensagem}>{mensagem}</div>}
 
-        <label style={{fontWeight: 'bold', fontSize: '14px', color: '#374151', marginTop: '8px'}}>Sua Senha</label>
-        <input
-          type="password"
-          value={senha}
-          onChange={(e) => setSenha(e.target.value)}
-          placeholder="Digite sua senha"
-          style={{padding: '12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '15px'}}
-        />
+        <form onSubmit={aoEntrar} style={estilos.formulario}>
+          <div style={estilos.grupo}>
+            <label style={estilos.label}>E-mail</label>
+            <input
+              type="email"
+              name="email"
+              value={formulario.email}
+              onChange={aoDigitar}
+              placeholder="seu@email.com"
+              style={estilos.input}
+              required
+            />
+          </div>
 
-        {mensagem && <p style={{color: '#dc2626', textAlign: 'center', margin: '10px 0'}}>{mensagem}</p>}
+          <div style={estilos.grupo}>
+            <label style={estilos.label}>Senha</label>
+            <input
+              type="password"
+              name="senha"
+              value={formulario.senha}
+              onChange={aoDigitar}
+              placeholder="Sua senha"
+              style={estilos.input}
+              required
+            />
+          </div>
 
-        <button type="submit" style={{marginTop: '10px', padding: '14px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer'}}>
-          ✅ Entrar
-        </button>
-      </form>
+          <button type="submit" style={estilos.botao}>
+            ✅ Entrar
+          </button>
+        </form>
 
-      <p style={{textAlign: 'center', marginTop: '20px', fontSize: '14px'}}>
-        Não tem cadastro? <Link to="/cadastro" style={{color: '#2563eb', fontWeight: 'bold'}}>Criar conta →</Link>
-      </p>
+        <p style={estilos.textoCadastro}>
+          Não tem conta? <Link to="/cadastrar" style={estilos.link}>Cadastre-se</Link>
+        </p>
+      </div>
     </div>
   )
+}
+
+const estilos = {
+  pagina: {
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '20px'
+  },
+  container: {
+    width: '100%',
+    maxWidth: '400px',
+    background: '#fff',
+    borderRadius: '16px',
+    padding: '32px',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.1)'
+  },
+  titulo: {
+    textAlign: 'center',
+    marginBottom: '24px',
+    color: '#1e293b'
+  },
+  mensagem: {
+    padding: '12px',
+    borderRadius: '8px',
+    marginBottom: '20px',
+    textAlign: 'center',
+    background: '#fef2f2',
+    color: '#dc2626'
+  },
+  formulario: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px'
+  },
+  grupo: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px'
+  },
+  label: {
+    fontSize: '14px',
+    fontWeight: 600,
+    color: '#374151'
+  },
+  input: {
+    padding: '14px 16px',
+    border: '2px solid #e5e7eb',
+    borderRadius: '10px',
+    fontSize: '16px',
+    outline: 'none'
+  },
+  botao: {
+    marginTop: '8px',
+    padding: '16px',
+    background: 'linear-gradient(135deg, #166534, #15803d)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '10px',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    cursor: 'pointer'
+  },
+  textoCadastro: {
+    marginTop: '24px',
+    textAlign: 'center',
+    fontSize: '14px',
+    color: '#64748b'
+  },
+  link: {
+    color: '#166534',
+    fontWeight: 'bold',
+    textDecoration: 'none'
+  }
 }
