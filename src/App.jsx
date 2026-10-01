@@ -12,6 +12,7 @@ import PagamentoPix from './Paginas/PagamentoPix'
 import CadastrarCartao from './Paginas/CadastrarCartao'
 import ConfirmarPagamento from './Paginas/ConfirmarPagamento'
 import PagamentoStripe from './Paginas/PagamentoStripe'
+import Pedidos from './Paginas/Pedidos'
 function Navegacao({ usuarioLogado }) {
   const navegar = useNavigate()
 
@@ -121,6 +122,7 @@ export default function App() {
         <Route path="/cadastrar-cartao" element={<CadastrarCartao />} />
         <Route path="/confirmar-pagamento" element={<ConfirmarPagamento />} />
         <Route path="/pagamento-stripe" element={<PagamentoStripe />} />
+        <Route path="/pedidos" element={<Pedidos />} />
       </Routes>
 
       <Navegacao usuarioLogado={usuarioLogado} />
