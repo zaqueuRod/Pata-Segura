@@ -1,8 +1,11 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { db } from "../firebase.js";
 import { ref, push, set, query, orderByChild, equalTo, get } from 'firebase/database'
 
 export default function Cadastro(props) {
+  const navegar = useNavigate()
+  const { aoMudarPagina } = props || {}
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
@@ -77,7 +80,7 @@ export default function Cadastro(props) {
       setTratamento(false)
       setObservacoes('')
 
-      props.aoMudarPagina('login')
+      navegar('/entrar')
 
     } catch (erro) {
       console.error(erro)

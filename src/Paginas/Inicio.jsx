@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 
-function Inicio({ aoMudarPagina }) {
+export default function Inicio() {
   const [usuario, setUsuario] = useState(null)
 
   useEffect(() => {
@@ -13,185 +14,583 @@ function Inicio({ aoMudarPagina }) {
   function sair() {
     localStorage.removeItem('usuarioLogado')
     setUsuario(null)
+    window.location.href = '/Pata-Segura/'
   }
 
   return (
-    <div style={estilos.container}>
+    <div style={estilos.pagina}>
+      {/* Cabeçalho fixo */}
       <header style={estilos.cabecalho}>
-        <span style={estilos.icone}>🐾</span>
-        <h1>Pata Segura</h1>
-        
-        {usuario ? (
-          <div>
-            <p style={{fontSize: '18px', margin: '10px 0'}}>
-              Olá, <strong>{usuario.nome}</strong>! 👋 
-              {usuario.tipo === 'cuidador' ? ' Você está pronto para ajudar!' : ' Encontre cuidadores para seu pet!'}
-            </p>
-            <button 
-           onClick={() => {
-            localStorage.removeItem('usuarioLogado')
-            if (window.atualizarUsuarioLogado) {
-            window.atualizarUsuarioLogado() // ✅ Atualiza na hora sem recarregar!
-           }
-           window.location.reload() // ✅ RECARREGA A PÁGINA SOZINHA!
-           props.aoMudarPagina('inicio')
-           
-            }}
-            
-             style={estilos.botaoSair}> 🚪 Sair 
-             </button>  
-             
+        <div style={estilos.containerCabecalho}>
+          <div style={estilos.logo}>
+            <span style={estilos.icone}>🐾</span>
+            <h1 style={estilos.titulo}>Pata Segura</h1>
           </div>
 
-  
-
-          
-        ) : (
-          <p>Seu melhor amigo em boas mãos enquanto você viaja!</p>
-        )}
+          {usuario ? (
+            <div style={estilos.usuario}>
+              <div style={estilos.avatar}>
+                {usuario.nome.charAt(0).toUpperCase()}
+              </div>
+              <div style={estilos.dadosUsuario}>
+                <span style={estilos.nomeUsuario}>{usuario.nome}</span>
+                <span style={estilos.tipoUsuario}>
+                  {usuario.tipo === 'dono' ? 'Dono de Pet' : 'Cuidador'}
+                </span>
+              </div>
+              <button onClick={sair} style={estilos.botaoSair}>Sair</button>
+            </div>
+          ) : (
+            <div style={estilos.botoesCabecalho}>
+              <Link to="/entrar" style={estilos.linkEntrar}>Entrar</Link>
+              <Link to="/cadastro" style={estilos.botaoCadastrar}>Cadastrar</Link>
+            </div>
+          )}
+        </div>
       </header>
 
-      <section style={estilos.conteudo}>
-        <h2 style={estilos.tituloSecao}>Por que confiar em nós?</h2>
-        
-        <div style={estilos.cards}>
-          <div style={estilos.card}>
-            <span style={estilos.iconeCard}>🛡️</span>
-            <h3>Cuidado com Confiança</h3>
-            <p>Todos os passeadores e cuidadores são verificados e avaliados para total tranquilidade.</p>
+      <main style={estilos.principal}>
+        {/* Seção Principal */}
+        <section style={estilos.hero}>
+          <div style={estilos.containerHero}>
+            <div style={estilos.textoHero}>
+              <span style={estilos.badge}>Cuidados com pets</span>
+              <h2 style={estilos.tituloHero}>
+                Cuide do seu melhor amigo com segurança e tranquilidade
+              </h2>
+              <p style={estilos.subtituloHero}>
+                Conectamos você a cuidadores de confiança para passeios, hospedagem
+                e cuidados diários com o seu cão.
+              </p>
+
+              <div style={estilos.botoesHero}>
+                {!usuario ? (
+                  <>
+                    <Link to="/cadastro" style={estilos.botaoPrimario}>
+                      Começar agora
+                    </Link>
+                    <Link to="/entrar" style={estilos.botaoSecundario}>
+                      Já tenho conta
+                    </Link>
+                  </>
+                ) : usuario.tipo === 'dono' ? (
+                  <>
+                    <Link to="/busca" style={estilos.botaoPrimario}>
+                      Buscar cuidadores
+                    </Link>
+                    <Link to="/pedidos" style={estilos.botaoSecundario}>
+                      Meus pedidos
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/status" style={estilos.botaoPrimario}>
+                      Ficar disponível
+                    </Link>
+                    <Link to="/pedidos" style={estilos.botaoSecundario}>
+                      Meus atendimentos
+                    </Link>
+                  </>
+                )}
+              </div>
+
+              <div style={estilos.estatisticas}>
+                <div style={estilos.estatistica}>
+                  <span style={estilos.numero}>100%</span>
+                  <span style={estilos.rotulo}>Segurança</span>
+                </div>
+                <div style={estilos.estatistica}>
+                  <span style={estilos.numero}>500+</span>
+                  <span style={estilos.rotulo}>Cuidadores</span>
+                </div>
+                <div style={estilos.estatistica}>
+                  <span style={estilos.numero}>4.9</span>
+                  <span style={estilos.rotulo}>Avaliação</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={estilos.cartoesHero}>
+              <div style={estilos.cardPrincipal}>
+                <div style={estilos.iconeCard}>🐶</div>
+                <h3 style={estilos.tituloCard}>Encontre o cuidador ideal</h3>
+                <p style={estilos.textoCard}>
+                  Perto de você, com avaliações e valores transparentes.
+                </p>
+              </div>
+
+              <div style={estilos.cardSecundario}>
+                <div style={estilos.iconeCard}>🛡️</div>
+                <h4 style={estilos.tituloCardMenor}>Segurança garantida</h4>
+                <p style={estilos.textoCardMenor}>
+                  Todos passam por verificação antes de serem aceitos.
+                </p>
+              </div>
+
+              <div style={estilos.cardTerceiro}>
+                <div style={estilos.iconeCard}>💚</div>
+                <h4 style={estilos.tituloCardMenor}>Amor aos pets</h4>
+                <p style={estilos.textoCardMenor}>
+                  Cuidadores tratam seu cão com carinho.
+                </p>
+              </div>
+            </div>
           </div>
-          <div style={estilos.card}>
-            <span style={estilos.iconeCard}>🚶</span>
-            <h3>Passeios Alegres</h3>
-            <p>Seu cão ganha rotina, exercício e muita diversão com pessoas que amam animais.</p>
+        </section>
+
+        {/* Como funciona */}
+        <section style={estilos.diferenciais}>
+          <div style={estilos.containerDiferenciais}>
+            <span style={estilos.secaoBadge}>Como funciona</span>
+            <h3 style={estilos.secaoTitulo}>Simples, rápido e confiável</h3>
+
+            <div style={estilos.gridDiferenciais}>
+              <div style={estilos.itemDiferencial}>
+                <div style={estilos.numeroEtapa}>1</div>
+                <h4 style={estilos.tituloEtapa}>Cadastre-se</h4>
+                <p style={estilos.textoEtapa}>
+                  Crie sua conta como dono ou cuidador em minutos.
+                </p>
+              </div>
+
+              <div style={estilos.itemDiferencial}>
+                <div style={estilos.numeroEtapa}>2</div>
+                <h4 style={estilos.tituloEtapa}>Encontre</h4>
+                <p style={estilos.textoEtapa}>
+                  Veja cuidadores perto de você no mapa em tempo real.
+                </p>
+              </div>
+
+              <div style={estilos.itemDiferencial}>
+                <div style={estilos.numeroEtapa}>3</div>
+                <h4 style={estilos.tituloEtapa}>Reserve</h4>
+                <p style={estilos.textoEtapa}>
+                  Escolha o horário, confirme e pague via PIX.
+                </p>
+              </div>
+
+              <div style={estilos.itemDiferencial}>
+                <div style={estilos.numeroEtapa}>4</div>
+                <h4 style={estilos.tituloEtapa}>Avalie</h4>
+                <p style={estilos.textoEtapa}>
+                  Depois do serviço, avalie e compartilhe sua experiência.
+                </p>
+              </div>
+            </div>
           </div>
-          <div style={estilos.card}>
-            <span style={estilos.iconeCard}>❤️</span>
-            <h3>Carinho e Dedicação</h3>
-            <p>Tratamos seu pet com o mesmo amor e cuidado que você trata em casa.</p>
+        </section>
+
+        {/* Chamada para ação */}
+        <section style={estilos.cta}>
+          <div style={estilos.containerCta}>
+            <h3 style={estilos.tituloCta}>
+              Pronto para cuidar do seu pet com tranquilidade?
+            </h3>
+            <p style={estilos.textoCta}>
+              Milhares de donos já confiam na Pata Segura.
+            </p>
+            <Link to="/cadastro" style={estilos.botaoCta}>
+              Criar conta gratuitamente
+            </Link>
           </div>
-          <div style={estilos.card}>
-            <span style={estilos.iconeCard}>📍</span>
-            <h3>Perto de Você</h3>
-            <p>Encontre profissionais de confiança na sua região, disponíveis quando precisar.</p>
+        </section>
+      </main>
+
+      {/* Rodapé */}
+      <footer style={estilos.rodape}>
+        <div style={estilos.containerRodape}>
+          <div style={estilos.colunaRodape}>
+            <div style={estilos.logoRodape}>
+              <span style={estilos.icone}>🐾</span>
+              <h4 style={estilos.tituloRodape}>Pata Segura</h4>
+            </div>
+            <p style={estilos.textoRodape}>
+              Conectando você a cuidadores de confiança.
+            </p>
+          </div>
+
+          <div style={estilos.colunaRodape}>
+            <h5 style={estilos.tituloColuna}>Serviços</h5>
+            
+            <Link to="/cadastro" style={estilos.linkRodape}>Ser cuidador</Link>
+            
+          </div>
+
+          <div style={estilos.colunaRodape}>
+            <h5 style={estilos.tituloColuna}>Suporte</h5>
+            <Link to="/" style={estilos.linkRodape}>Central de ajuda</Link>
+            <Link to="/" style={estilos.linkRodape}>Contato</Link>
+            <Link to="/" style={estilos.linkRodape}>Termos de uso</Link>
+          </div>
+
+          <div style={estilos.colunaRodape}>
+            <h5 style={estilos.tituloColuna}>Contato</h5>
+            <p style={estilos.contatoRodape}>E-mail: contato@patasegura.com.br</p>
+            
           </div>
         </div>
 
-        {!usuario && (
-          <div style={estilos.botaoArea}>
-            <button onClick={() => aoMudarPagina('cadastro')} style={estilos.botao}>
-              Quero me Cadastrar 🐕
-            </button>
-            <p style={{marginTop: '15px', color: '#78350f'}}>
-              Já tem conta?{' '}
-              <button onClick={() => aoMudarPagina('login')} style={estilos.linkTexto}>
-                Entre aqui →
-              </button>
-            </p>
-          </div>
-        )}
-      </section>
-
-      <footer style={estilos.rodape}>
-        <p>🐶 Feito com amor e carinho pelos nossos amigos de quatro patas.</p>
+        <div style={estilos.copy}>
+          © 2025 Pata Segura. Todos os direitos reservados.
+        </div>
       </footer>
     </div>
   )
 }
 
 const estilos = {
-  container: {
-    fontFamily: "'Segoe UI', Arial, sans-serif",
-    maxWidth: '900px',
+  pagina: {
+    minHeight: '100vh',
+    width: '100%',
+    maxWidth: '100vw',
     margin: '0 auto',
-    padding: '20px'
-  },
-  cabecalho: {
-    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-    color: '#fffbeb',
-    padding: '45px 25px',
-    borderRadius: '20px',
-    textAlign: 'center',
-    marginBottom: '35px',
-    boxShadow: '0 4px 15px rgba(245, 158, 11, 0.3)'
-  },
-  icone: {
-    fontSize: '48px',
-    display: 'block',
-    marginBottom: '10px'
-  },
-  tituloSecao: {
-    textAlign: 'center',
-    fontSize: '28px',
-    color: '#78350f',
-    marginBottom: '10px'
-  },
-  conteudo: {
-    fontSize: '17px',
-    lineHeight: '1.7',
-    color: '#451a03'
-  },
-  cards: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-    gap: '22px',
-    marginTop: '30px'
-  },
-  card: {
-    background: '#fffbeb',
-    padding: '25px',
-    borderRadius: '16px',
-    border: '2px solid #fcd34d',
-    boxShadow: '0 3px 10px rgba(245, 158, 11, 0.15)',
+    padding: 0,
+    background: '#f8fafc',
+    fontFamily: "'Segoe UI', Roboto, sans-serif",
     textAlign: 'center'
   },
-  iconeCard: {
-    fontSize: '36px',
-    display: 'block',
-    marginBottom: '12px'
+  cabecalho: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100%',
+    background: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(8px)',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+    padding: '10px 0',
+    zIndex: 100
   },
-  botaoArea: {
-    textAlign: 'center',
-    marginTop: '45px'
+  containerCabecalho: {
+    width: '90%',
+    maxWidth: '1200px',
+    margin: '0 auto',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap'
   },
-  botao: {
-    display: 'inline-block',
-    background: '#f59e0b',
-    color: '#ffffff',
-    padding: '15px 35px',
-    borderRadius: '12px',
-    textDecoration: 'none',
-    fontSize: '19px',
-    fontWeight: 'bold',
-    boxShadow: '0 4px 12px rgba(245, 158, 11, 0.35)',
-    border: 'none',
-    cursor: 'pointer'
+  logo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px'
   },
-  linkTexto: {
-    background: 'transparent',
-    border: 'none',
-    color: '#d97706',
-    fontWeight: 'bold',
-    fontSize: '16px',
-    cursor: 'pointer'
-  },
-  botaoSair: {
-    background: 'rgba(255,255,255,0.25)',
+  icone: { fontSize: '24px' },
+  titulo: { margin: 0, fontSize: '18px', color: '#166534', fontWeight: 800 },
+  usuario: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
+  avatar: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #22c55e, #16a34a)',
     color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    flexShrink: 0
+  },
+  dadosUsuario: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start' },
+  nomeUsuario: { fontSize: '14px', fontWeight: 600, color: '#1e293b' },
+  tipoUsuario: { fontSize: '12px', color: '#64748b' },
+  botaoSair: {
+    padding: '8px 12px',
     border: 'none',
+    borderRadius: '8px',
+    background: '#fef2f2',
+    color: '#dc2626',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: 600
+  },
+  botoesCabecalho: { display: 'flex', gap: '8px', alignItems: 'center' },
+  linkEntrar: {
+    textDecoration: 'none',
+    color: '#475569',
+    fontSize: '14px',
+    fontWeight: 600,
+    padding: '8px 12px'
+  },
+  botaoCadastrar: {
+    textDecoration: 'none',
+    background: '#166534',
+    color: '#fff',
     padding: '8px 16px',
     borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: 600
+  },
+  principal: {
+    marginTop: '70px',
+    width: '100%',
+    marginLeft: 'auto',
+    marginRight: 'auto'
+  },
+  hero: {
+    padding: '40px 16px',
+    background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%)',
+    width: '100%'
+  },
+  containerHero: {
+    width: '90%',
+    maxWidth: '1200px',
+    margin: '0 auto',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '40px',
+    flexWrap: 'wrap',
+    justifyContent: 'center'
+  },
+  textoHero: {
+    flex: '1 1 300px',
+    textAlign: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center'
+  },
+  badge: {
+    display: 'inline-block',
+    fontSize: '13px',
+    color: '#15803d',
+    fontWeight: 600,
+    background: '#ffffff',
+    border: '1px solid #bbf7d0',
+    borderRadius: '999px',
+    padding: '6px 14px',
+    marginBottom: '16px'
+  },
+  tituloHero: {
+    fontSize: 'clamp(24px, 5vw, 36px)',
+    lineHeight: '1.3',
+    margin: '0 0 16px',
+    color: '#1e293b',
+    textAlign: 'center'
+  },
+  subtituloHero: {
+    fontSize: '16px',
+    lineHeight: '1.6',
+    color: '#64748b',
+    margin: '0 0 24px',
+    maxWidth: '500px',
+    textAlign: 'center'
+  },
+  botoesHero: {
+    display: 'flex',
+    gap: '12px',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    width: '100%'
+  },
+  botaoPrimario: {
+    background: '#166534',
+    color: '#fff',
+    padding: '12px 24px',
+    borderRadius: '10px',
+    textDecoration: 'none',
     fontSize: '15px',
-    cursor: 'pointer'
+    fontWeight: 600,
+    boxShadow: '0 4px 12px rgba(22, 101, 52, 0.25)',
+    textAlign: 'center'
+  },
+  botaoSecundario: {
+    background: '#fff',
+    color: '#1e293b',
+    padding: '12px 24px',
+    borderRadius: '10px',
+    textDecoration: 'none',
+    fontSize: '15px',
+    fontWeight: 600,
+    border: '1px solid #cbd5e1',
+    textAlign: 'center'
+  },
+  estatisticas: {
+    display: 'flex',
+    gap: '24px',
+    marginTop: '32px',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    width: '100%'
+  },
+  estatistica: { textAlign: 'center' },
+  numero: {
+    fontSize: 'clamp(22px, 4vw, 28px)',
+    fontWeight: 800,
+    color: '#166534',
+    display: 'block'
+  },
+  rotulo: { fontSize: '13px', color: '#64748b' },
+  cartoesHero: {
+    flex: '1 1 300px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+    alignItems: 'center'
+  },
+  cardPrincipal: {
+    background: '#ffffff',
+    padding: '24px',
+    borderRadius: '16px',
+    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
+    width: '100%',
+    maxWidth: '360px',
+    textAlign: 'center'
+  },
+  cardSecundario: {
+    background: '#ffffff',
+    padding: '20px',
+    borderRadius: '14px',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.06)',
+    width: '100%',
+    maxWidth: '320px',
+    textAlign: 'center'
+  },
+  cardTerceiro: {
+    background: '#ffffff',
+    padding: '20px',
+    borderRadius: '14px',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.06)',
+    width: '100%',
+    maxWidth: '320px',
+    textAlign: 'center'
+  },
+  iconeCard: { fontSize: '28px', marginBottom: '10px' },
+  tituloCard: { margin: 0, fontSize: '20px', fontWeight: 700, color: '#1e293b' },
+  textoCard: { margin: '8px 0 0', color: '#64748b', lineHeight: '1.6' },
+  tituloCardMenor: { margin: 0, fontSize: '16px', fontWeight: 600, color: '#1e293b' },
+  textoCardMenor: { margin: '6px 0 0', color: '#64748b', lineHeight: '1.5' },
+  diferenciais: {
+    padding: '48px 16px',
+    background: '#f8fafc',
+    width: '100%'
+  },
+  containerDiferenciais: {
+    width: '90%',
+    maxWidth: '1200px',
+    margin: '0 auto',
+    textAlign: 'center'
+  },
+  secaoBadge: {
+    display: 'inline-block',
+    fontSize: '13px',
+    color: '#15803d',
+    fontWeight: 600,
+    background: '#f0fdf4',
+    borderRadius: '999px',
+    padding: '6px 14px',
+    marginBottom: '12px'
+  },
+  secaoTitulo: {
+    fontSize: 'clamp(22px, 4vw, 30px)',
+    margin: '0 0 32px',
+    color: '#1e293b',
+    fontWeight: 700,
+    textAlign: 'center'
+  },
+  gridDiferenciais: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gap: '20px',
+    width: '100%'
+  },
+  itemDiferencial: {
+    background: '#ffffff',
+    padding: '24px',
+    borderRadius: '14px',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.06)',
+    textAlign: 'center'
+  },
+  numeroEtapa: {
+    width: '44px',
+    height: '44px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '20px',
+    fontWeight: 'bold',
+    margin: '0 auto 12px'
+  },
+  tituloEtapa: { margin: '0 0 6px', fontSize: '17px', fontWeight: 600, color: '#1e293b' },
+  textoEtapa: { margin: 0, color: '#64748b', lineHeight: '1.5', fontSize: '14px' },
+  cta: {
+    padding: '48px 16px',
+    background: 'linear-gradient(135deg, #166534 0%, #15803d 100%)',
+    color: '#fff',
+    width: '100%'
+  },
+  containerCta: {
+    width: '90%',
+    maxWidth: '700px',
+    margin: '0 auto',
+    textAlign: 'center'
+  },
+  tituloCta: {
+    fontSize: 'clamp(20px, 4vw, 28px)',
+    margin: '0 0 12px',
+    fontWeight: 700,
+    textAlign: 'center'
+  },
+  textoCta: {
+    fontSize: '16px',
+    margin: '0 0 24px',
+    opacity: 0.9,
+    textAlign: 'center'
+  },
+  botaoCta: {
+    background: '#ffffff',
+    color: '#166534',
+    padding: '14px 28px',
+    borderRadius: '12px',
+    textDecoration: 'none',
+    fontSize: '16px',
+    fontWeight: 600,
+    display: 'inline-block',
+    textAlign: 'center'
   },
   rodape: {
-    textAlign: 'center',
-    marginTop: '50px',
+    background: '#1e293b',
+    color: '#fff',
+    padding: '40px 16px 24px',
+    width: '100%'
+  },
+  containerRodape: {
+    width: '90%',
+    maxWidth: '1200px',
+    margin: '0 auto',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: '28px',
+    marginBottom: '24px',
+    textAlign: 'center'
+  },
+  colunaRodape: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    alignItems: 'center'
+  },
+  logoRodape: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    marginBottom: '8px'
+  },
+  tituloRodape: { margin: 0, fontSize: '18px', fontWeight: 700 },
+  textoRodape: { margin: 0, color: '#cbd5e1', lineHeight: '1.6', fontSize: '14px', textAlign: 'center' },
+  tituloColuna: { margin: '0 0 12px', fontSize: '15px', fontWeight: 600 },
+  linkRodape: { color: '#cbd5e1', textDecoration: 'none', marginBottom: '6px', fontSize: '14px', textAlign: 'center' },
+  contatoRodape: { margin: '0 0 6px', color: '#cbd5e1', fontSize: '14px', textAlign: 'center' },
+  copy: {
+    width: '90%',
+    maxWidth: '1200px',
+    margin: '0 auto',
     paddingTop: '20px',
-    borderTop: '2px dashed #fcd34d',
-    color: '#92400e',
-    fontSize: '15px'
+    borderTop: '1px solid #334155',
+    textAlign: 'center',
+    color: '#94a3b8',
+    fontSize: '13px'
   }
 }
-
-export default Inicio

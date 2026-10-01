@@ -36,21 +36,35 @@ export default function PaginaStatus() {
 
   // ✅ Alternar Online / Offline
   async function alternarStatus() {
-    if (!usuario) return
-    const novoStatus = !online
-    setOnline(novoStatus) // Atualiza na hora na tela
+  if (!usuario) return
+  const novoStatus = !online
+  setOnline(novoStatus)
 
-    try {
-      const refCuidador = ref(db, `usuarios/${usuario.id}`)
+  try {
+    const refCuidador = ref(db, `usuarios/${usuario.id}`)
+    
+    // ✅ PEGA A LOCALIZAÇÃO E SALVA JUNTO!
+    if (navigator.geolocation && novoStatus) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        update(refCuidador, {
+          online: novoStatus,
+          ultimoOnline: new Date().toLocaleString('pt-BR'),
+          lat: pos.coords.latitude,   // ✅ SALVA LATITUDE
+          lng: pos.coords.longitude    // ✅ SALVA LONGITUDE
+        })
+      })
+    } else {
+      // Sem geolocalização disponível
       await update(refCuidador, {
         online: novoStatus,
         ultimoOnline: new Date().toLocaleString('pt-BR')
       })
-    } catch (erro) {
-      setMensagem('❌ Erro ao atualizar status!')
-      setOnline(!novoStatus) // Volta se der erro
     }
+  } catch (erro) {
+    setMensagem('❌ Erro ao atualizar status!')
+    setOnline(!novoStatus)
   }
+}
 
   // ✅ Função de SAQUE
   async function solicitarSaque() {

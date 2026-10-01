@@ -3,6 +3,7 @@ import { db } from '../firebase'
 import { ref, push, set, serverTimestamp, onValue } from 'firebase/database'
 
 export default function BuscaMapa() {
+  const [cuidadoresProximos, setCuidadoresProximos] = useState([])
   const [dadosUsuario, setDadosUsuario] = useState(null)
   const [buscando, setBuscando] = useState(false)
   const [chamadaEnviada, setChamadaEnviada] = useState(false)
@@ -22,25 +23,36 @@ export default function BuscaMapa() {
       () => console.log('Usando localização padrão')
     )
   }, [])
-
-  // ✅ Carrega CUIDADORES em TEMPO REAL ⚡
+  // ✅ BUSCAR CUIDADORES ONLINE DO FIREBASE ⚡
   useEffect(() => {
     const usuariosRef = ref(db, 'usuarios')
-    return onValue(usuariosRef, (snapshot) => {
+    const pararEscuta = onValue(usuariosRef, (snapshot) => {
       if (snapshot.exists()) {
         const lista = []
-        snapshot.forEach((filho) => {
-          const usuario = { id: filho.key, ...filho.val() }
-          if (usuario.tipo === 'cuidador' && usuario.lat && usuario.lng) {
-            lista.push(usuario)
+        snapshot.forEach((item) => {
+          const dados = item.val()
+          // ✅ Pegar apenas Cuidadores ONLINE com localização
+          if (dados.tipo === 'cuidador' && dados.online === true && dados.lat && dados.lng) {
+            lista.push({
+              id: item.key,
+              nome: dados.nome || 'Cuidador',
+              valorHora: dados.valorHora || 25,
+              servicos: dados.servicos || 'Passeio',
+              lat: dados.lat,
+              lng: dados.lng
+            })
           }
         })
-        setCuidadores(lista)
+        setCuidadores(lista) // ✅ Coloca na lista!
       } else {
         setCuidadores([])
       }
     })
+    return () => pararEscuta()
   }, [])
+  
+  
+
 
   // ✅ Dono envia chamada
   async function fazerBusca() {
@@ -96,56 +108,72 @@ export default function BuscaMapa() {
           title="Mapa"
           loading="lazy"
         ></iframe>
-
-        {/* ✅ CAIXA FLUTUANTE COM OS CUIDADORES EM CIMA DO MAPA 📍 */}
-        {cuidadores.length > 0 ? (
-          <div style={{
-            position: 'absolute',
-            top: '15px',
-            left: '15px',
-            right: '15px',
-            backgroundColor: 'rgba(255,255,255,0.96)',
-            padding: '14px',
-            borderRadius: '12px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            maxHeight: '200px',
-            overflowY: 'auto'
-          }}>
-            <h4 style={{margin: '0 0 10px 0', color: '#166534', fontSize: '14px'}}>🐾 Cuidadores Próximos</h4>
-            {cuidadores.map((c, i) => (
-              <div key={c.id} style={{
-                padding: '8px 10px',
-                backgroundColor: '#f0fdf4',
-                borderRadius: '8px',
-                marginBottom: '6px'
-              }}>
-                <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '14px'}}>
-                  <strong>{i+1}. {c.nome}</strong>
-                  <span style={{color: '#2563eb', fontWeight: 'bold'}}>📍 {calcularDistancia(minhaLocalizacao.lat, minhaLocalizacao.lng, c.lat, c.lng)}</span>
+                 {/* ✅ CAIXA FLUTUANTE COM OS CUIDADORES EM CIMA DO MAPA 📍 */}
+          {cuidadores.length > 0 ? (
+            <div style={{
+              position: 'absolute',
+              top: '15px',
+              left: '15px',
+              right: '15px',
+              backgroundColor: 'rgba(255,255,255,0.96)',
+              padding: '14px',
+              borderRadius: '12px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              maxHeight: '250px',
+              overflowY: 'auto'
+            }}>
+              <h4 style={{margin: '0 0 12px 0', color: '#166534', fontSize: '15px'}}>🐾 Cuidadores Próximos</h4>
+              {cuidadores.map((c, i) => (
+                <div key={c.id} style={{
+                  padding: '10px 12px',
+                  backgroundColor: '#f0fdf4',
+                  borderRadius: '8px',
+                  marginBottom: '8px'
+                }}>
+                  <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '5px'}}>
+                    <strong>{i+1}. {c.nome}</strong>
+                    <span style={{color: '#2563eb', fontWeight: 'bold'}}>📍 {calcularDistancia(minhaLocalizacao.lat, minhaLocalizacao.lng, c.lat, c.lng)}</span>
+                  </div>
+                  <div style={{fontSize: '13px', color: '#15803d', marginBottom: '8px'}}>
+                    💰 R$ {c.valorHora?.toFixed(2).replace('.', ',') || '0,00'}/hora
+                  </div>
+                  <button
+                    onClick={() => {
+                      window.location.href = `/Pata-Segura/pagamento?cuidadorId=${c.id}&cuidadorNome=${encodeURIComponent(c.nome)}&valor=${(c.valorHora || 25).toFixed(2)}`
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      backgroundColor: '#22c55e',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ✅ Escolher
+                  </button>
                 </div>
-                <div style={{fontSize: '12px', color: '#15803d', marginTop: '3px'}}>
-                  💰 R$ {c.valorHora?.toFixed(2).replace('.', ',') || '0,00'}/hora
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div style={{
-            position: 'absolute',
-            top: '15px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: 'rgba(255,255,255,0.96)',
-            padding: '12px 20px',
-            borderRadius: '10px',
-            fontSize: '14px',
-            color: '#6b7280',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-          }}>
-            📍 Nenhum cuidador disponível no momento
-          </div>
-        )}
-
+              ))}
+            </div>
+          ) : (
+            <div style={{
+              position: 'absolute',
+              top: '15px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              backgroundColor: 'rgba(255,255,255,0.96)',
+              padding: '12px 20px',
+              borderRadius: '10px',
+              fontSize: '14px',
+              color: '#6b7280',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+            }}>
+              📍 Nenhum cuidador disponível no momento
+            </div>
+          )}
         {/* ✅ BOTÃO DE NOTIFICAR EMBAIXO */}
         <div style={{
           position: 'absolute',

@@ -6,7 +6,12 @@ import Notificacoes from './Paginas/Notificacoes'
 import Login from './Paginas/Login'
 import Cadastro from './Paginas/Cadastro'
 import PaginaStatus from './Paginas/PaginaStatus'
-
+import HistoricoSaques from './Paginas/HistoricoSaques'
+import EscolherPagamento from './Paginas/EscolherPagamento'
+import PagamentoPix from './Paginas/PagamentoPix'
+import CadastrarCartao from './Paginas/CadastrarCartao'
+import ConfirmarPagamento from './Paginas/ConfirmarPagamento'
+import PagamentoStripe from './Paginas/PagamentoStripe'
 function Navegacao({ usuarioLogado }) {
   const navegar = useNavigate()
 
@@ -37,6 +42,15 @@ function Navegacao({ usuarioLogado }) {
         >
           Buscar
         </button>
+      )}
+
+      {usuarioLogado?.tipo === 'cuidador' && (
+      <button 
+      onClick={() => navegar('/historico')}
+      style={{ border: 'none', background: 'transparent', fontSize: '14px', cursor: 'pointer', color: '#8b5cf6', fontWeight: 'bold' }}
+      >
+      Extrato
+     </button>
       )}
 
       {usuarioLogado?.tipo === 'cuidador' && (
@@ -94,6 +108,9 @@ export default function App() {
     <div style={{ minHeight: '100vh', paddingBottom: '70px' }}>
       
       <Routes>
+        <Route path="/pagamento" element={<EscolherPagamento />} />
+        <Route path="/pagamento-pix" element={<PagamentoPix />} />
+        <Route path="/historico" element={<HistoricoSaques />} />
         <Route path="/" element={<Inicio />} />
         <Route path="/inicio" element={<Inicio />} />
         <Route path="/busca" element={<BuscaMapa />} />
@@ -101,6 +118,9 @@ export default function App() {
         <Route path="/status" element={<PaginaStatus />} />
         <Route path="/entrar" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />
+        <Route path="/cadastrar-cartao" element={<CadastrarCartao />} />
+        <Route path="/confirmar-pagamento" element={<ConfirmarPagamento />} />
+        <Route path="/pagamento-stripe" element={<PagamentoStripe />} />
       </Routes>
 
       <Navegacao usuarioLogado={usuarioLogado} />
